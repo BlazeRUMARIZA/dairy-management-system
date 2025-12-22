@@ -1,0 +1,204 @@
+{
+  "clients": [
+    {
+      "id": "CLI-001",
+      "name": "Restaurant La Belle",
+      "type": "Restaurant",
+      "email": "contact@labelle.fr",
+      "phone": "+33 1 23 45 67 89",
+      "address": "123 Rue de la Paix, 75001 Paris",
+      "contact": {
+        "name": "Jean Dupont",
+        "position": "Manager",
+        "email": "jean.dupont@labelle.fr",
+        "phone": "+33 6 12 34 56 78"
+      },
+      "billingAddress": {
+        "street": "123 Rue de la Paix",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "deliveryAddress": {
+        "street": "123 Rue de la Paix",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "status": "active",
+      "rating": 5,
+      "totalOrders": 145,
+      "totalRevenue": 45230,
+      "monthlyRevenue": 4500,
+      "preferences": {
+        "deliveryDays": ["Monday", "Wednesday", "Friday"],
+        "paymentTerms": 30,
+        "deliveryTime": "07:00-09:00"
+      },
+      "favoriteProducts": ["Fresh Milk 1L", "Cheddar Cheese 200g"],
+      "createdAt": "2024-01-15T00:00:00",
+      "lastOrderDate": "2025-12-18T00:00:00",
+      "notes": "Premium client, priority delivery"
+    },
+    {
+      "id": "CLI-002",
+      "name": "SuperMarket Plus",
+      "type": "Grocery",
+      "email": "orders@supermarketplus.com",
+      "phone": "+33 1 98 76 54 32",
+      "address": "456 Avenue des Champs, 75008 Paris",
+      "contact": {
+        "name": "Marie Martin",
+        "position": "Procurement Manager",
+        "email": "marie.martin@supermarketplus.com",
+        "phone": "+33 6 98 76 54 32"
+      },
+      "billingAddress": {
+        "street": "456 Avenue des Champs",
+        "city": "Paris",
+        "zipCode": "75008",
+        "country": "France"
+      },
+      "deliveryAddress": {
+        "street": "456 Avenue des Champs - Loading Dock",
+        "city": "Paris",
+        "zipCode": "75008",
+        "country": "France"
+      },
+      "status": "active",
+      "rating": 4,
+      "totalOrders": 238,
+      "totalRevenue": 82400,
+      "monthlyRevenue": 3800,
+      "preferences": {
+        "deliveryDays": ["Tuesday", "Thursday", "Saturday"],
+        "paymentTerms": 45,
+        "deliveryTime": "06:00-08:00"
+      },
+      "favoriteProducts": ["Fresh Milk 1L", "Greek Yogurt 400g", "Heavy Cream 250ml"],
+      "createdAt": "2023-06-10T00:00:00",
+      "lastOrderDate": "2025-12-19T00:00:00",
+      "notes": "Large volume orders, requires early delivery"
+    },
+    {
+      "id": "CLI-003",
+      "name": "Cafe Corner",
+      "type": "Restaurant",
+      "email": "cafe@corner.fr",
+      "phone": "+33 1 45 67 89 01",
+      "address": "789 Boulevard Saint-Germain, 75006 Paris",
+      "contact": {
+        "name": "Pierre Leroux",
+        "position": "Owner",
+        "email": "pierre@corner.fr",
+        "phone": "+33 6 45 67 89 01"
+      },
+      "billingAddress": {
+        "street": "789 Boulevard Saint-Germain",
+        "city": "Paris",
+        "zipCode": "75006",
+        "country": "France"
+      },
+      "deliveryAddress": {
+        "street": "789 Boulevard Saint-Germain",
+        "city": "Paris",
+        "zipCode": "75006",
+        "country": "France"
+      },
+      "status": "active",
+      "rating": 5,
+      "totalOrders": 92,
+      "totalRevenue": 22150,
+      "monthlyRevenue": 2200,
+      "preferences": {
+        "deliveryDays": ["Monday", "Thursday"],
+        "paymentTerms": 15,
+        "deliveryTime": "08:00-10:00"
+      },
+      "favoriteProducts": ["Heavy Cream 250ml", "Fresh Milk 1L"],
+      "createdAt": "2024-03-22T00:00:00",
+      "lastOrderDate": "2025-12-17T00:00:00",
+      "notes": "Small orders but frequent"
+    },
+    {
+      "id": "CLI-004",
+      "name": "Hotel Grand",
+      "type": "Hotel",
+      "email": "supply@hotelgrand.fr",
+      "phone": "+33 1 23 98 76 54",
+      "address": "12 Place Vendôme, 75001 Paris",
+      "contact": {
+        "name": "Sophie Bernard",
+        "position": "Kitchen Manager",
+        "email": "sophie.bernard@hotelgrand.fr",
+        "phone": "+33 6 23 98 76 54"
+      },
+      "billingAddress": {
+        "street": "12 Place Vendôme",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "deliveryAddress": {
+        "street": "12 Place Vendôme - Service Entrance",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "status": "active",
+      "rating": 4,
+      "totalOrders": 156,
+      "totalRevenue": 58900,
+      "monthlyRevenue": 5200,
+      "preferences": {
+        "deliveryDays": ["Monday", "Wednesday", "Friday"],
+        "paymentTerms": 30,
+        "deliveryTime": "05:00-07:00"
+      },
+      "favoriteProducts": ["Fresh Milk 1L", "Greek Yogurt 400g", "Cheddar Cheese 200g"],
+      "createdAt": "2023-11-08T00:00:00",
+      "lastOrderDate": "2025-12-18T00:00:00",
+      "notes": "High-end hotel, premium products only"
+    },
+    {
+      "id": "CLI-005",
+      "name": "Bakery Fresh",
+      "type": "Bakery",
+      "email": "orders@bakeryfresh.fr",
+      "phone": "+33 1 56 78 90 12",
+      "address": "34 Rue Montorgueil, 75002 Paris",
+      "contact": {
+        "name": "Antoine Dubois",
+        "position": "Owner",
+        "email": "antoine@bakeryfresh.fr",
+        "phone": "+33 6 56 78 90 12"
+      },
+      "billingAddress": {
+        "street": "34 Rue Montorgueil",
+        "city": "Paris",
+        "zipCode": "75002",
+        "country": "France"
+      },
+      "deliveryAddress": {
+        "street": "34 Rue Montorgueil",
+        "city": "Paris",
+        "zipCode": "75002",
+        "country": "France"
+      },
+      "status": "active",
+      "rating": 5,
+      "totalOrders": 78,
+      "totalRevenue": 18600,
+      "monthlyRevenue": 1800,
+      "preferences": {
+        "deliveryDays": ["Daily"],
+        "paymentTerms": 15,
+        "deliveryTime": "04:00-06:00"
+      },
+      "favoriteProducts": ["Fresh Milk 1L", "Heavy Cream 250ml"],
+      "createdAt": "2024-05-12T00:00:00",
+      "lastOrderDate": "2025-12-19T00:00:00",
+      "notes": "Very early delivery required for bread making"
+    }
+  ]
+}

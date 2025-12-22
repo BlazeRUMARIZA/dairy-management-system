@@ -1,0 +1,267 @@
+{
+  "orders": [
+    {
+      "id": "ORD-2025-1234",
+      "orderNumber": "1234",
+      "clientId": "CLI-001",
+      "clientName": "Restaurant La Belle",
+      "status": "delivered",
+      "items": [
+        {
+          "productId": "PROD-001",
+          "productName": "Fresh Milk 1L",
+          "quantity": 50,
+          "unit": "L",
+          "unitPrice": 2.50,
+          "total": 125.00
+        },
+        {
+          "productId": "PROD-005",
+          "productName": "Cheddar Cheese 200g",
+          "quantity": 10,
+          "unit": "kg",
+          "unitPrice": 32.50,
+          "total": 325.00
+        }
+      ],
+      "subtotal": 450.00,
+      "tax": 90.00,
+      "total": 540.00,
+      "deliveryAddress": {
+        "street": "123 Rue de la Paix",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "deliveryDate": "2025-12-19",
+      "deliveryTime": "07:00-09:00",
+      "driverId": "DRV-001",
+      "driverName": "Marc Leclerc",
+      "specialInstructions": "Use service entrance",
+      "tracking": {
+        "status": "delivered",
+        "events": [
+          {
+            "status": "created",
+            "timestamp": "2025-12-18T14:30:00",
+            "note": "Order created"
+          },
+          {
+            "status": "confirmed",
+            "timestamp": "2025-12-18T14:35:00",
+            "note": "Order confirmed by client"
+          },
+          {
+            "status": "preparing",
+            "timestamp": "2025-12-19T05:00:00",
+            "note": "Order preparation started"
+          },
+          {
+            "status": "ready",
+            "timestamp": "2025-12-19T06:30:00",
+            "note": "Order ready for delivery"
+          },
+          {
+            "status": "in-transit",
+            "timestamp": "2025-12-19T07:00:00",
+            "note": "Out for delivery",
+            "location": "Warehouse"
+          },
+          {
+            "status": "delivered",
+            "timestamp": "2025-12-19T07:45:00",
+            "note": "Delivered successfully",
+            "location": "123 Rue de la Paix, Paris",
+            "signature": "J. Dupont"
+          }
+        ]
+      },
+      "createdAt": "2025-12-18T14:30:00",
+      "updatedAt": "2025-12-19T07:45:00"
+    },
+    {
+      "id": "ORD-2025-1235",
+      "orderNumber": "1235",
+      "clientId": "CLI-002",
+      "clientName": "SuperMarket Plus",
+      "status": "in-transit",
+      "items": [
+        {
+          "productId": "PROD-002",
+          "productName": "Greek Yogurt 400g",
+          "quantity": 100,
+          "unit": "units",
+          "unitPrice": 3.20,
+          "total": 320.00
+        }
+      ],
+      "subtotal": 320.00,
+      "tax": 64.00,
+      "total": 384.00,
+      "deliveryAddress": {
+        "street": "456 Avenue des Champs - Loading Dock",
+        "city": "Paris",
+        "zipCode": "75008",
+        "country": "France"
+      },
+      "deliveryDate": "2025-12-20",
+      "deliveryTime": "06:00-08:00",
+      "driverId": "DRV-002",
+      "driverName": "Laurent Petit",
+      "specialInstructions": "Call on arrival",
+      "tracking": {
+        "status": "in-transit",
+        "events": [
+          {
+            "status": "created",
+            "timestamp": "2025-12-19T10:00:00",
+            "note": "Order created"
+          },
+          {
+            "status": "confirmed",
+            "timestamp": "2025-12-19T10:15:00",
+            "note": "Order confirmed"
+          },
+          {
+            "status": "preparing",
+            "timestamp": "2025-12-19T16:00:00",
+            "note": "Order preparation started"
+          },
+          {
+            "status": "ready",
+            "timestamp": "2025-12-19T18:30:00",
+            "note": "Order ready for delivery"
+          },
+          {
+            "status": "in-transit",
+            "timestamp": "2025-12-20T06:00:00",
+            "note": "Out for delivery",
+            "location": "En route to client"
+          }
+        ]
+      },
+      "createdAt": "2025-12-19T10:00:00",
+      "updatedAt": "2025-12-20T06:00:00"
+    },
+    {
+      "id": "ORD-2025-1236",
+      "orderNumber": "1236",
+      "clientId": "CLI-003",
+      "clientName": "Cafe Corner",
+      "status": "preparing",
+      "items": [
+        {
+          "productId": "PROD-004",
+          "productName": "Heavy Cream 250ml",
+          "quantity": 20,
+          "unit": "L",
+          "unitPrice": 4.50,
+          "total": 90.00
+        },
+        {
+          "productId": "PROD-001",
+          "productName": "Fresh Milk 1L",
+          "quantity": 30,
+          "unit": "L",
+          "unitPrice": 2.50,
+          "total": 75.00
+        }
+      ],
+      "subtotal": 165.00,
+      "tax": 33.00,
+      "total": 198.00,
+      "deliveryAddress": {
+        "street": "789 Boulevard Saint-Germain",
+        "city": "Paris",
+        "zipCode": "75006",
+        "country": "France"
+      },
+      "deliveryDate": "2025-12-21",
+      "deliveryTime": "08:00-10:00",
+      "driverId": null,
+      "driverName": null,
+      "specialInstructions": "",
+      "tracking": {
+        "status": "preparing",
+        "events": [
+          {
+            "status": "created",
+            "timestamp": "2025-12-19T12:00:00",
+            "note": "Order created"
+          },
+          {
+            "status": "confirmed",
+            "timestamp": "2025-12-19T12:10:00",
+            "note": "Order confirmed"
+          },
+          {
+            "status": "preparing",
+            "timestamp": "2025-12-20T05:00:00",
+            "note": "Order preparation started"
+          }
+        ]
+      },
+      "createdAt": "2025-12-19T12:00:00",
+      "updatedAt": "2025-12-20T05:00:00"
+    },
+    {
+      "id": "ORD-2025-1237",
+      "orderNumber": "1237",
+      "clientId": "CLI-004",
+      "clientName": "Hotel Grand",
+      "status": "pending",
+      "items": [
+        {
+          "productId": "PROD-001",
+          "productName": "Fresh Milk 1L",
+          "quantity": 80,
+          "unit": "L",
+          "unitPrice": 2.50,
+          "total": 200.00
+        },
+        {
+          "productId": "PROD-002",
+          "productName": "Greek Yogurt 400g",
+          "quantity": 50,
+          "unit": "units",
+          "unitPrice": 3.20,
+          "total": 160.00
+        },
+        {
+          "productId": "PROD-005",
+          "productName": "Cheddar Cheese 200g",
+          "quantity": 15,
+          "unit": "kg",
+          "unitPrice": 32.50,
+          "total": 487.50
+        }
+      ],
+      "subtotal": 847.50,
+      "tax": 169.50,
+      "total": 1017.00,
+      "deliveryAddress": {
+        "street": "12 Place Vendôme - Service Entrance",
+        "city": "Paris",
+        "zipCode": "75001",
+        "country": "France"
+      },
+      "deliveryDate": "2025-12-22",
+      "deliveryTime": "05:00-07:00",
+      "driverId": null,
+      "driverName": null,
+      "specialInstructions": "Ring service bell, ask for Sophie",
+      "tracking": {
+        "status": "pending",
+        "events": [
+          {
+            "status": "created",
+            "timestamp": "2025-12-19T15:30:00",
+            "note": "Order created"
+          }
+        ]
+      },
+      "createdAt": "2025-12-19T15:30:00",
+      "updatedAt": "2025-12-19T15:30:00"
+    }
+  ]
+}

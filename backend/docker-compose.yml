@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: dairy-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: dairy-management
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - dairy-network
+
+  # Backend API
+  backend:
+    build: .
+    container_name: dairy-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:password@mongo:27017/dairy-management?authSource=admin
+      JWT_SECRET: your-production-secret-key-change-this
+      JWT_EXPIRE: 7d
+      FRONTEND_URL: http://localhost:5173
+    depends_on:
+      - mongo
+    networks:
+      - dairy-network
+
+volumes:
+  mongo-data:
+
+networks:
+  dairy-network:
+    driver: bridge

@@ -1,0 +1,70 @@
+{
+  "batches": [
+    {
+      "id": "B-2025-1234",
+      "product": "Fresh Milk",
+      "productType": "milk",
+      "quantity": 2500,
+      "unit": "L",
+      "status": "completed",
+      "operator": "John Doe",
+      "operatorId": "1",
+      "startTime": "2025-12-19T08:00:00",
+      "endTime": "2025-12-19T12:30:00",
+      "temperature": 72,
+      "pH": 6.8,
+      "yield": 98,
+      "qualityChecks": {
+        "temperature": "pass",
+        "pH": "pass",
+        "bacteria": "pass"
+      },
+      "notes": "Standard pasteurization process",
+      "createdAt": "2025-12-19T08:00:00"
+    },
+    {
+      "id": "B-2025-1235",
+      "product": "Greek Yogurt",
+      "productType": "yogurt",
+      "quantity": 1200,
+      "unit": "L",
+      "status": "in-progress",
+      "operator": "Jane Smith",
+      "operatorId": "2",
+      "startTime": "2025-12-19T10:00:00",
+      "endTime": null,
+      "temperature": 43,
+      "pH": 4.5,
+      "yield": 95,
+      "qualityChecks": {
+        "temperature": "pass",
+        "pH": "pending",
+        "bacteria": "pending"
+      },
+      "notes": "Fermentation in progress",
+      "createdAt": "2025-12-19T10:00:00"
+    },
+    {
+      "id": "B-2025-1236",
+      "product": "Cheddar Cheese",
+      "productType": "cheese",
+      "quantity": 500,
+      "unit": "kg",
+      "status": "pending",
+      "operator": "Bob Wilson",
+      "operatorId": "3",
+      "startTime": null,
+      "endTime": null,
+      "temperature": null,
+      "pH": null,
+      "yield": 0,
+      "qualityChecks": {
+        "temperature": "pending",
+        "pH": "pending",
+        "bacteria": "pending"
+      },
+      "notes": "Scheduled for afternoon production",
+      "createdAt": "2025-12-19T07:00:00"
+    }
+  ]
+}
