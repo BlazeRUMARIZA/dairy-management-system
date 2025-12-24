@@ -5,7 +5,7 @@ import { Button } from '../../components/UI/Button'
 import { Modal } from '../../components/UI/Modal'
 import { Input, Select } from '../../components/UI/Input'
 import { Package, Plus, Edit, Trash2, Eye, Truck, MapPin, CheckCircle } from 'lucide-react'
-import { orderService, clientService, productService } from '../../services/dataService'
+import api from '../../services/api'
 import { format } from 'date-fns'
 
 const Orders: React.FC = () => {
@@ -17,6 +17,8 @@ const Orders: React.FC = () => {
   const [showTrackingModal, setShowTrackingModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [editMode, setEditMode] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     clientId: '',
     deliveryDate: '',
@@ -31,19 +33,36 @@ const Orders: React.FC = () => {
     loadProducts()
   }, [])
 
-  const loadOrders = () => {
-    const data = orderService.getAll()
-    setOrders(data)
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await api.orders.getAll()
+      setOrders(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load orders:', err)
+      setError(err.message || 'Failed to load orders')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const loadClients = () => {
-    const data = clientService.getAll()
-    setClients(data)
+  const loadClients = async () => {
+    try {
+      const response = await api.clients.getAll()
+      setClients(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load clients:', err)
+    }
   }
 
-  const loadProducts = () => {
-    const data = productService.getAll()
-    setProducts(data)
+  const loadProducts = async () => {
+    try {
+      const response = await api.products.getAll()
+      setProducts(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load products:', err)
+    }
   }
 
   const handleCreate = () => {
@@ -75,19 +94,35 @@ const Orders: React.FC = () => {
   }
 
   const handleView = (order: any) => {
-    setSelectedOrder(order)
+    // Parse items if it's a JSON string
+    const parsedOrder = {
+      ...order,
+      items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items
+    }
+    setSelectedOrder(parsedOrder)
     setShowDetailModal(true)
   }
 
   const handleTracking = (order: any) => {
-    setSelectedOrder(order)
+    // Parse items and tracking if they're JSON strings
+    const parsedOrder = {
+      ...order,
+      items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
+      tracking: typeof order.tracking === 'string' ? JSON.parse(order.tracking) : order.tracking
+    }
+    setSelectedOrder(parsedOrder)
     setShowTrackingModal(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this order?')) {
-      orderService.delete(id)
-      loadOrders()
+      try {
+        await api.orders.delete(id)
+        await loadOrders()
+      } catch (err: any) {
+        console.error('Failed to delete order:', err)
+        alert('Failed to delete order')
+      }
     }
   }
 
@@ -121,7 +156,7 @@ const Orders: React.FC = () => {
     }, 0)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     const client = clients.find(c => c.id === formData.clientId)
@@ -164,38 +199,33 @@ const Orders: React.FC = () => {
       }
     }
 
-    if (editMode && selectedOrder) {
-      orderService.update(selectedOrder.id, orderData)
-    } else {
-      orderService.create(orderData)
-    }
+    try {
+      if (editMode && selectedOrder) {
+        await api.orders.update(selectedOrder.id, orderData)
+      } else {
+        await api.orders.create(orderData)
+      }
 
-    loadOrders()
-    setShowOrderModal(false)
+      await loadOrders()
+      setShowOrderModal(false)
+    } catch (err: any) {
+      console.error('Failed to save order:', err)
+      alert('Failed to save order')
+    }
   }
 
-  const handleStatusUpdate = (orderId: string, newStatus: string) => {
-    const statusEvent = {
-      timestamp: new Date().toISOString(),
-      status: newStatus,
-      location: 'Distribution Center',
-      notes: `Order ${newStatus}`
-    }
-
-    const order = orderService.getById(orderId)
-    if (order) {
-      const updatedTracking = {
-        ...order.tracking,
-        status: newStatus,
-        events: [...order.tracking.events, statusEvent]
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      await api.orders.updateStatus(orderId, newStatus)
+      await loadOrders()
+      
+      if (selectedOrder?.id === orderId) {
+        const response = await api.orders.getById(orderId)
+        setSelectedOrder(response.data)
       }
-      orderService.update(orderId, { status: newStatus, tracking: updatedTracking })
-    }
-    loadOrders()
-    
-    if (selectedOrder?.id === orderId) {
-      const updated = orderService.getById(orderId)
-      setSelectedOrder(updated)
+    } catch (err: any) {
+      console.error('Failed to update order status:', err)
+      alert('Failed to update order status')
     }
   }
 
@@ -288,7 +318,7 @@ const Orders: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">{order.orderNumber}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{order.clientName}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{order.items.length} items</td>
-                  <td className="px-6 py-4 whitespace-nowrap">€{order.total.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">€{Number(order.total).toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {format(new Date(order.deliveryDate), 'MMM dd, yyyy')}
                   </td>
@@ -467,10 +497,10 @@ const Orders: React.FC = () => {
             <div>
               <h4 className="font-semibold mb-2">Items</h4>
               <div className="space-y-2">
-                {selectedOrder.items.map((item: any, index: number) => (
+                {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).map((item: any, index: number) => (
                   <div key={index} className="flex justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded">
                     <span>{item.productName} ({item.quantity} {item.unit})</span>
-                    <span className="font-semibold">€{item.total.toFixed(2)}</span>
+                    <span className="font-semibold">€{Number(item.total).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -479,15 +509,15 @@ const Orders: React.FC = () => {
             <div className="border-t pt-4">
               <div className="flex justify-between mb-2">
                 <span>Subtotal:</span>
-                <span>€{selectedOrder.subtotal.toFixed(2)}</span>
+                <span>€{Number(selectedOrder.subtotal).toFixed(2)}</span>
               </div>
               <div className="flex justify-between mb-2">
                 <span>Tax (10%):</span>
-                <span>€{selectedOrder.tax.toFixed(2)}</span>
+                <span>€{Number(selectedOrder.tax).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg">
                 <span>Total:</span>
-                <span className="text-primary-600">€{selectedOrder.total.toFixed(2)}</span>
+                <span className="text-primary-600">€{Number(selectedOrder.total).toFixed(2)}</span>
               </div>
             </div>
 
@@ -554,11 +584,14 @@ const Orders: React.FC = () => {
             <div className="space-y-4">
               <h4 className="font-semibold">Tracking History</h4>
               <div className="space-y-3">
-                {selectedOrder.tracking.events.map((event: any, index: number) => (
+                {(selectedOrder.tracking?.events && Array.isArray(selectedOrder.tracking.events) 
+                  ? selectedOrder.tracking.events 
+                  : []
+                ).map((event: any, index: number) => (
                   <div key={index} className="flex space-x-3">
                     <div className="flex flex-col items-center">
                       <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
-                      {index < selectedOrder.tracking.events.length - 1 && (
+                      {index < (selectedOrder.tracking?.events?.length || 0) - 1 && (
                         <div className="w-0.5 h-full bg-gray-300 dark:bg-gray-600"></div>
                       )}
                     </div>

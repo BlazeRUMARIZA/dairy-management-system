@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
+import { User } from '../models/User';
 
 export interface AuthRequest extends Request {
-  user?: IUser;
+  user?: any;
 }
 
 export const protect = async (
@@ -34,7 +34,9 @@ export const protect = async (
         id: string;
       };
 
-      const user = await User.findById(decoded.id).select('-password');
+      const user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password'] }
+      });
       
       if (!user) {
         res.status(401).json({

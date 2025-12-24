@@ -1,140 +1,181 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+} from 'sequelize-typescript';
+import Order from './Order';
+import Client from './Client';
+import { User } from './User';
 
-interface IInvoiceItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
+@Table({
+  tableName: 'invoices',
+  timestamps: true,
+})
+export default class Invoice extends Model {
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  invoiceNumber!: string;
 
-export interface IInvoice extends Document {
-  invoiceNumber: string;
-  orderId: mongoose.Types.ObjectId;
-  clientId: mongoose.Types.ObjectId;
-  clientName: string;
-  items: IInvoiceItem[];
-  subtotal: number;
-  tax: number;
+  @ForeignKey(() => Order)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  orderId?: number;
+
+  @BelongsTo(() => Order)
+  order?: Order;
+
+  @ForeignKey(() => Client)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  clientId!: number;
+
+  @BelongsTo(() => Client)
+  client!: Client;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  clientName!: string;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+  })
+  items!: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  subtotal!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  tax!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
   discount?: number;
-  total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  issueDate: Date;
-  dueDate: Date;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  total!: number;
+
+  @Column({
+    type: DataType.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'draft',
+  })
+  status!: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+  })
+  issueDate!: Date;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  dueDate!: Date;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
   paidDate?: Date;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   paymentMethod?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   paymentReference?: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
   notes?: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
   termsAndConditions?: string;
-  createdBy: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  createdBy!: number;
+
+  @BelongsTo(() => User, 'createdBy')
+  creator!: User;
+
+  // Initialize hooks
+  static initHooks() {
+    this.addHook('beforeCreate', async (instance: Invoice) => {
+      if (!instance.invoiceNumber) {
+        const year = new Date().getFullYear();
+        const count = await Invoice.count();
+        instance.invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+      }
+
+      // Auto-update status based on due date
+      if (instance.status === 'sent' && instance.dueDate < new Date() && !instance.paidDate) {
+        instance.status = 'overdue';
+      }
+    });
+
+    this.addHook('beforeUpdate', (instance: Invoice) => {
+      // Auto-update status based on due date
+      if (instance.status === 'sent' && instance.dueDate < new Date() && !instance.paidDate) {
+        instance.status = 'overdue';
+      }
+    });
+  }
 }
-
-const invoiceSchema = new Schema<IInvoice>(
-  {
-    invoiceNumber: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    orderId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Order',
-    },
-    clientId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Client',
-      required: true,
-    },
-    clientName: {
-      type: String,
-      required: true,
-    },
-    items: [{
-      description: {
-        type: String,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      unitPrice: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      total: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-    }],
-    subtotal: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    tax: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    discount: {
-      type: Number,
-      min: 0,
-      default: 0,
-    },
-    total: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    status: {
-      type: String,
-      enum: ['draft', 'sent', 'paid', 'overdue', 'cancelled'],
-      default: 'draft',
-    },
-    issueDate: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
-    dueDate: {
-      type: Date,
-      required: true,
-    },
-    paidDate: Date,
-    paymentMethod: String,
-    paymentReference: String,
-    notes: String,
-    termsAndConditions: String,
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Generate invoice number
-invoiceSchema.pre('save', async function (next) {
-  if (!this.invoiceNumber) {
-    const year = new Date().getFullYear();
-    const count = await mongoose.model('Invoice').countDocuments();
-    this.invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
-  }
-  
-  // Auto-update status based on due date
-  if (this.status === 'sent' && this.dueDate < new Date() && !this.paidDate) {
-    this.status = 'overdue';
-  }
-  
-  next();
-});
-
-export default mongoose.model<IInvoice>('Invoice', invoiceSchema);

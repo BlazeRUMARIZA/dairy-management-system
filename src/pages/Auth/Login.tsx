@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Milk } from 'lucide-react'
+import { Milk, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Input } from '../../components/UI/Input'
 import { Button } from '../../components/UI/Button'
@@ -10,17 +10,22 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
+    
     try {
       await login(email, password)
       navigate('/dashboard')
-    } catch (error) {
-      console.error('Login failed:', error)
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Login failed. Please check your credentials.'
+      setError(errorMessage)
+      console.error('Login failed:', err)
     } finally {
       setLoading(false)
     }
@@ -37,6 +42,14 @@ const Login: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">DairyPro</h1>
           <p className="text-gray-600 dark:text-gray-400">Management System</p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+            <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
+            <span className="text-sm text-red-800 dark:text-red-200">{error}</span>
+          </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit}>
@@ -80,7 +93,7 @@ const Login: React.FC = () => {
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Demo credentials: any email/password combination</p>
+          <p>Test with: admin@dairy.com / admin123</p>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Op } from 'sequelize';
 import Product from '../models/Product';
 import { AuthRequest } from '../middleware/auth';
 
@@ -9,25 +10,28 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
   try {
     const { category, status, search } = req.query;
     
-    let query: any = {};
+    let where: any = {};
     
     if (category) {
-      query.category = category;
+      where.category = category;
     }
     
     if (status) {
-      query.status = status;
+      where.status = status;
     }
     
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } },
-        { barcode: { $regex: search, $options: 'i' } },
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { sku: { [Op.like]: `%${search}%` } },
+        { barcode: { [Op.like]: `%${search}%` } },
       ];
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
+    const products = await Product.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+    });
 
     res.status(200).json({
       success: true,
@@ -47,7 +51,7 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
 // @access  Private
 export const getProduct = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findByPk(req.params.id);
 
     if (!product) {
       res.status(404).json({
@@ -93,14 +97,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
 // @access  Private (Admin, Manager)
 export const updateProduct = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const product = await Product.findByPk(req.params.id);
 
     if (!product) {
       res.status(404).json({
@@ -109,6 +106,8 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
       });
       return;
     }
+
+    await product.update(req.body);
 
     res.status(200).json({
       success: true,
@@ -127,7 +126,7 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
 // @access  Private (Admin)
 export const deleteProduct = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findByPk(req.params.id);
 
     if (!product) {
       res.status(404).json({
@@ -136,6 +135,8 @@ export const deleteProduct = async (req: AuthRequest, res: Response): Promise<vo
       });
       return;
     }
+
+    await product.destroy();
 
     res.status(200).json({
       success: true,
@@ -156,7 +157,7 @@ export const updateStock = async (req: AuthRequest, res: Response): Promise<void
   try {
     const { quantity, type } = req.body;
     
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findByPk(req.params.id);
 
     if (!product) {
       res.status(404).json({
@@ -199,11 +200,16 @@ export const updateStock = async (req: AuthRequest, res: Response): Promise<void
 // @desc    Get low stock products
 // @route   GET /api/v1/products/alerts/low-stock
 // @access  Private
-export const getLowStockProducts = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getLowStockProducts = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const products = await Product.find({
-      status: { $in: ['low', 'critical', 'out-of-stock'] },
-    }).sort({ currentStock: 1 });
+    const products = await Product.findAll({
+      where: {
+        status: {
+          [Op.in]: ['low', 'critical', 'out-of-stock']
+        }
+      },
+      order: [['currentStock', 'ASC']],
+    });
 
     res.status(200).json({
       success: true,

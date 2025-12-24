@@ -1,160 +1,179 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+} from 'sequelize-typescript';
+import Product from './Product';
+import { User } from './User';
 
-interface IQualityChecks {
-  temperature: 'pass' | 'fail' | 'pending';
-  pH: 'pass' | 'fail' | 'pending';
-  bacteria: 'pass' | 'fail' | 'pending';
-  appearance?: 'pass' | 'fail' | 'pending';
-  taste?: 'pass' | 'fail' | 'pending';
-}
+@Table({
+  tableName: 'batches',
+  timestamps: true,
+})
+export default class Batch extends Model {
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  batchNumber!: string;
 
-export interface IBatch extends Document {
-  batchNumber: string;
-  product: string;
-  productType: 'milk' | 'yogurt' | 'cheese' | 'butter' | 'cream' | 'other';
-  productId?: mongoose.Types.ObjectId;
-  quantity: number;
-  unit: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled';
-  operatorId: mongoose.Types.ObjectId;
-  operator: string;
-  startTime: Date;
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  product!: string;
+
+  @Column({
+    type: DataType.ENUM('milk', 'yogurt', 'cheese', 'butter', 'cream', 'other'),
+    allowNull: false,
+  })
+  productType!: 'milk' | 'yogurt' | 'cheese' | 'butter' | 'cream' | 'other';
+
+  @ForeignKey(() => Product)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  productId?: number;
+
+  @BelongsTo(() => Product)
+  productRef?: Product;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  quantity!: number;
+
+  @Column({
+    type: DataType.ENUM('L', 'kg', 'units'),
+    allowNull: false,
+  })
+  unit!: 'L' | 'kg' | 'units';
+
+  @Column({
+    type: DataType.ENUM('pending', 'in-progress', 'completed', 'failed', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'pending',
+  })
+  status!: 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled';
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  operatorId!: number;
+
+  @BelongsTo(() => User)
+  operatorUser!: User;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  operator!: string;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  startTime!: Date;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
   endTime?: Date;
+
+  @Column({
+    type: DataType.DECIMAL(5, 2),
+    allowNull: true,
+    validate: {
+      min: -50,
+      max: 150,
+    },
+  })
   temperature?: number;
+
+  @Column({
+    type: DataType.DECIMAL(4, 2),
+    allowNull: true,
+    validate: {
+      min: 0,
+      max: 14,
+    },
+  })
   pH?: number;
+
+  @Column({
+    type: DataType.DECIMAL(5, 2),
+    allowNull: true,
+    validate: {
+      min: 0,
+      max: 100,
+    },
+  })
   yield?: number;
-  qualityChecks: IQualityChecks;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+    defaultValue: {
+      temperature: 'pending',
+      pH: 'pending',
+      bacteria: 'pending',
+    },
+  })
+  qualityChecks!: {
+    temperature: 'pass' | 'fail' | 'pending';
+    pH: 'pass' | 'fail' | 'pending';
+    bacteria: 'pass' | 'fail' | 'pending';
+    appearance?: 'pass' | 'fail' | 'pending';
+    taste?: 'pass' | 'fail' | 'pending';
+  };
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
   notes?: string;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+    defaultValue: [],
+  })
   ingredients?: Array<{
     name: string;
     quantity: number;
     unit: string;
   }>;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+    defaultValue: [],
+  })
   equipment?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+
+  // Initialize hooks
+  static initHooks() {
+    this.addHook('beforeCreate', async (instance: Batch) => {
+      if (!instance.batchNumber) {
+        const year = new Date().getFullYear();
+        const count = await Batch.count();
+        const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+        instance.batchNumber = `B-${year}-${random}${String(count + 1).padStart(3, '0')}`;
+      }
+    });
+  }
 }
 
-const batchSchema = new Schema<IBatch>(
-  {
-    batchNumber: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    product: {
-      type: String,
-      required: [true, 'Product name is required'],
-    },
-    productType: {
-      type: String,
-      required: [true, 'Product type is required'],
-      enum: ['milk', 'yogurt', 'cheese', 'butter', 'cream', 'other'],
-    },
-    productId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Product',
-    },
-    quantity: {
-      type: Number,
-      required: [true, 'Quantity is required'],
-      min: [0, 'Quantity cannot be negative'],
-    },
-    unit: {
-      type: String,
-      required: [true, 'Unit is required'],
-      enum: ['L', 'kg', 'units'],
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'in-progress', 'completed', 'failed', 'cancelled'],
-      default: 'pending',
-    },
-    operatorId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Operator is required'],
-    },
-    operator: {
-      type: String,
-      required: true,
-    },
-    startTime: {
-      type: Date,
-      required: true,
-    },
-    endTime: Date,
-    temperature: {
-      type: Number,
-      min: -50,
-      max: 150,
-    },
-    pH: {
-      type: Number,
-      min: 0,
-      max: 14,
-    },
-    yield: {
-      type: Number,
-      min: 0,
-      max: 100,
-    },
-    qualityChecks: {
-      temperature: {
-        type: String,
-        enum: ['pass', 'fail', 'pending'],
-        default: 'pending',
-      },
-      pH: {
-        type: String,
-        enum: ['pass', 'fail', 'pending'],
-        default: 'pending',
-      },
-      bacteria: {
-        type: String,
-        enum: ['pass', 'fail', 'pending'],
-        default: 'pending',
-      },
-      appearance: {
-        type: String,
-        enum: ['pass', 'fail', 'pending'],
-      },
-      taste: {
-        type: String,
-        enum: ['pass', 'fail', 'pending'],
-      },
-    },
-    notes: String,
-    ingredients: [{
-      name: {
-        type: String,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      unit: {
-        type: String,
-        required: true,
-      },
-    }],
-    equipment: [String],
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Generate batch number
-batchSchema.pre('save', async function (next) {
-  if (!this.batchNumber) {
-    const year = new Date().getFullYear();
-    const count = await mongoose.model('Batch').countDocuments();
-    this.batchNumber = `B-${year}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-  }
-  next();
-});
-
-export default mongoose.model<IBatch>('Batch', batchSchema);

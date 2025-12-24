@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
+import 'reflect-metadata';
 import dotenv from 'dotenv';
-import User from '../models/User';
+import { sequelize } from '../config/database';
+import { User } from '../models/User';
 import Product from '../models/Product';
 import Client from '../models/Client';
 import Order from '../models/Order';
@@ -9,67 +10,74 @@ import Invoice from '../models/Invoice';
 
 dotenv.config();
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dairy-management');
-    console.log('✅ MongoDB Connected');
-  } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error);
-    process.exit(1);
-  }
-};
-
 const seedData = async () => {
   try {
-    // Clear existing data
-    await User.deleteMany({});
-    await Product.deleteMany({});
-    await Client.deleteMany({});
-    await Order.deleteMany({});
-    await Batch.deleteMany({});
-    await Invoice.deleteMany({});
+    // Connect to database
+    await sequelize.authenticate();
+    console.log('✅ Database Connected');
 
-    console.log('🧹 Cleared existing data');
+    // Initialize hooks
+    User.initHooks();
+    Product.initHooks();
+    Order.initHooks();
+    Batch.initHooks();
+    Invoice.initHooks();
 
-    // Create users
-    const users = await User.create([
+    // Sync database (recreate tables)
+    await sequelize.sync({ force: true });
+    console.log('🧹 Database tables recreated');
+
+    // Create 5 users with different roles
+    const users = await User.bulkCreate([
       {
-        name: 'John Admin',
+        name: 'Admin User',
         email: 'admin@dairy.com',
-        password: 'password123',
+        password: 'admin123',
         role: 'admin',
-        phone: '+1234567890',
+        phone: '+33612345678',
+        status: 'active',
       },
       {
-        name: 'Jane Manager',
+        name: 'Manager Pierre',
         email: 'manager@dairy.com',
-        password: 'password123',
+        password: 'manager123',
         role: 'manager',
-        phone: '+1234567891',
+        phone: '+33612345679',
+        status: 'active',
       },
       {
-        name: 'Bob Operator',
+        name: 'Operator Marie',
         email: 'operator@dairy.com',
-        password: 'password123',
+        password: 'operator123',
         role: 'operator',
-        phone: '+1234567892',
+        phone: '+33612345680',
+        status: 'active',
       },
       {
-        name: 'Alice Driver',
+        name: 'Driver Jean',
         email: 'driver@dairy.com',
-        password: 'password123',
+        password: 'driver123',
         role: 'driver',
-        phone: '+1234567893',
+        phone: '+33612345681',
+        status: 'active',
       },
-    ]);
+      {
+        name: 'Viewer Sophie',
+        email: 'viewer@dairy.com',
+        password: 'viewer123',
+        role: 'viewer',
+        phone: '+33612345682',
+        status: 'active',
+      },
+    ], { individualHooks: true });
 
-    console.log('👥 Created users');
+    console.log('👥 Created 5 users');
 
-    // Create products
-    const products = await Product.create([
+    // Create 10 products
+    const products = await Product.bulkCreate([
       {
         name: 'Fresh Milk 1L',
-        category: 'Milk',
+        category: 'milk',
         sku: 'MILK-FRESH-1L',
         barcode: 'DRY001234567890',
         description: 'Fresh pasteurized whole milk',
@@ -82,140 +90,425 @@ const seedData = async () => {
         location: 'Refrigerator 1',
         shelfLife: 7,
         storageTemp: '2-4°C',
-        supplier: 'Local Farms Co.',
+        supplier: 'Local Dairy Farm',
       },
       {
-        name: 'Greek Yogurt 400g',
-        category: 'Yogurt',
-        sku: 'YOG-GREEK-400G',
+        name: 'Organic Milk 1L',
+        category: 'milk',
+        sku: 'MILK-ORG-1L',
         barcode: 'DRY001234567891',
-        description: 'Creamy Greek-style yogurt',
-        currentStock: 180,
-        minThreshold: 120,
-        maxCapacity: 500,
-        unit: 'units',
-        unitPrice: 3.20,
-        costPrice: 2.10,
+        description: 'Organic whole milk from certified farms',
+        currentStock: 320,
+        minThreshold: 150,
+        maxCapacity: 800,
+        unit: 'L',
+        unitPrice: 3.50,
+        costPrice: 2.60,
+        location: 'Refrigerator 1',
+        shelfLife: 7,
+        storageTemp: '2-4°C',
+        supplier: 'Organic Farms Ltd',
+      },
+      {
+        name: 'Greek Yogurt 500g',
+        category: 'yogurt',
+        sku: 'YOG-GREEK-500',
+        barcode: 'DRY001234567892',
+        description: 'Thick and creamy Greek yogurt',
+        currentStock: 280,
+        minThreshold: 100,
+        maxCapacity: 600,
+        unit: 'kg',
+        unitPrice: 4.20,
+        costPrice: 3.00,
         location: 'Refrigerator 2',
         shelfLife: 14,
         storageTemp: '2-4°C',
-        supplier: 'In-house Production',
+        supplier: 'Mediterranean Foods',
+      },
+      {
+        name: 'Natural Yogurt 1kg',
+        category: 'yogurt',
+        sku: 'YOG-NAT-1KG',
+        barcode: 'DRY001234567893',
+        description: 'Plain natural yogurt, no added sugar',
+        currentStock: 350,
+        minThreshold: 150,
+        maxCapacity: 700,
+        unit: 'kg',
+        unitPrice: 3.80,
+        costPrice: 2.80,
+        location: 'Refrigerator 2',
+        shelfLife: 14,
+        storageTemp: '2-4°C',
+        supplier: 'Local Dairy Farm',
       },
       {
         name: 'Cheddar Cheese 200g',
-        category: 'Cheese',
-        sku: 'CHE-CHED-200G',
-        barcode: 'DRY001234567892',
-        description: 'Aged cheddar cheese',
-        currentStock: 85,
-        minThreshold: 50,
-        maxCapacity: 200,
-        unit: 'units',
-        unitPrice: 5.50,
-        costPrice: 3.80,
-        location: 'Cold Storage 1',
-        shelfLife: 60,
+        category: 'cheese',
+        sku: 'CHE-CHED-200',
+        barcode: 'DRY001234567894',
+        description: 'Mature cheddar cheese',
+        currentStock: 150,
+        minThreshold: 80,
+        maxCapacity: 400,
+        unit: 'kg',
+        unitPrice: 6.50,
+        costPrice: 4.80,
+        location: 'Refrigerator 3',
+        shelfLife: 30,
         storageTemp: '2-8°C',
-        supplier: 'Artisan Cheese Co.',
+        supplier: 'Cheese Masters',
+      },
+      {
+        name: 'Mozzarella 250g',
+        category: 'cheese',
+        sku: 'CHE-MOZZ-250',
+        barcode: 'DRY001234567895',
+        description: 'Fresh mozzarella cheese',
+        currentStock: 180,
+        minThreshold: 70,
+        maxCapacity: 350,
+        unit: 'kg',
+        unitPrice: 5.80,
+        costPrice: 4.20,
+        location: 'Refrigerator 3',
+        shelfLife: 21,
+        storageTemp: '2-6°C',
+        supplier: 'Italian Imports',
+      },
+      {
+        name: 'Heavy Cream 500ml',
+        category: 'cream',
+        sku: 'CRM-HEAVY-500',
+        barcode: 'DRY001234567896',
+        description: 'Premium heavy cream 35% fat',
+        currentStock: 200,
+        minThreshold: 100,
+        maxCapacity: 500,
+        unit: 'L',
+        unitPrice: 4.50,
+        costPrice: 3.20,
+        location: 'Refrigerator 4',
+        shelfLife: 10,
+        storageTemp: '2-4°C',
+        supplier: 'Premium Dairy',
+      },
+      {
+        name: 'Whipping Cream 250ml',
+        category: 'cream',
+        sku: 'CRM-WHIP-250',
+        barcode: 'DRY001234567897',
+        description: 'Whipping cream for desserts',
+        currentStock: 160,
+        minThreshold: 80,
+        maxCapacity: 400,
+        unit: 'L',
+        unitPrice: 3.20,
+        costPrice: 2.40,
+        location: 'Refrigerator 4',
+        shelfLife: 10,
+        storageTemp: '2-4°C',
+        supplier: 'Premium Dairy',
       },
       {
         name: 'Butter 250g',
-        category: 'Butter',
-        sku: 'BUT-UNSAL-250G',
-        barcode: 'DRY001234567893',
-        description: 'Unsalted butter',
-        currentStock: 120,
-        minThreshold: 80,
-        maxCapacity: 300,
-        unit: 'units',
-        unitPrice: 4.00,
-        costPrice: 2.80,
-        location: 'Cold Storage 2',
+        category: 'butter',
+        sku: 'BUT-SALT-250',
+        barcode: 'DRY001234567898',
+        description: 'Salted butter',
+        currentStock: 220,
+        minThreshold: 100,
+        maxCapacity: 500,
+        unit: 'kg',
+        unitPrice: 5.00,
+        costPrice: 3.80,
+        location: 'Refrigerator 5',
         shelfLife: 90,
+        storageTemp: '2-6°C',
+        supplier: 'Butter Factory',
+      },
+      {
+        name: 'Skimmed Milk 1L',
+        category: 'milk',
+        sku: 'MILK-SKIM-1L',
+        barcode: 'DRY001234567899',
+        description: 'Fat-free skimmed milk',
+        currentStock: 380,
+        minThreshold: 180,
+        maxCapacity: 900,
+        unit: 'L',
+        unitPrice: 2.20,
+        costPrice: 1.60,
+        location: 'Refrigerator 1',
+        shelfLife: 7,
         storageTemp: '2-4°C',
-        supplier: 'In-house Production',
+        supplier: 'Local Dairy Farm',
       },
     ]);
 
-    console.log('🥛 Created products');
+    console.log('📦 Created 10 products');
 
-    // Create clients
-    const clients = await Client.create([
+    // Create 8 clients
+    const clients = await Client.bulkCreate([
       {
-        name: 'Restaurant La Belle',
+        name: 'Restaurant La Belle Vue',
         type: 'Restaurant',
-        email: 'contact@labelle.fr',
-        phone: '+33 1 23 45 67 89',
-        address: '123 Rue de la Paix, 75001 Paris',
+        email: 'contact@labellevue.fr',
+        phone: '+33140123456',
+        address: '15 Rue de la Paix, 75001 Paris',
         contact: {
-          name: 'Jean Dupont',
-          position: 'Manager',
-          email: 'jean.dupont@labelle.fr',
-          phone: '+33 6 12 34 56 78',
+          name: 'Chef Antoine',
+          position: 'Chef',
         },
         billingAddress: {
-          street: '123 Rue de la Paix',
+          street: '15 Rue de la Paix',
           city: 'Paris',
           zipCode: '75001',
           country: 'France',
         },
         deliveryAddress: {
-          street: '123 Rue de la Paix',
+          street: '15 Rue de la Paix',
           city: 'Paris',
           zipCode: '75001',
           country: 'France',
         },
-        status: 'active',
-        rating: 5,
         preferences: {
           deliveryDays: ['Monday', 'Wednesday', 'Friday'],
           paymentTerms: 30,
-          deliveryTime: '07:00-09:00',
+          deliveryTime: '06:00-08:00',
         },
+        status: 'active',
+        rating: 5,
       },
       {
-        name: 'SuperMarket Plus',
+        name: 'SuperMarché Plus',
         type: 'Grocery',
-        email: 'orders@supermarketplus.com',
-        phone: '+33 1 98 76 54 32',
-        address: '456 Avenue des Champs, 75008 Paris',
+        email: 'orders@supermarcheplus.fr',
+        phone: '+33140123457',
+        address: '45 Avenue des Champs, 75008 Paris',
         contact: {
-          name: 'Marie Laurent',
-          position: 'Procurement Manager',
+          name: 'Marie Dubois',
+          position: 'Manager',
+        },
+        billingAddress: {
+          street: '45 Avenue des Champs',
+          city: 'Paris',
+          zipCode: '75008',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '45 Avenue des Champs',
+          city: 'Paris',
+          zipCode: '75008',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Tuesday', 'Thursday', 'Saturday'],
+          paymentTerms: 15,
+          deliveryTime: '07:00-09:00',
         },
         status: 'active',
         rating: 4,
-        preferences: {
-          deliveryDays: ['Tuesday', 'Thursday'],
-          paymentTerms: 15,
-        },
       },
       {
-        name: 'Hotel Grand',
+        name: 'Café Le Petit Coin',
+        type: 'Cafe',
+        email: 'lepetitcoin@cafe.fr',
+        phone: '+33140123458',
+        address: '8 Rue du Commerce, 69002 Lyon',
+        contact: {
+          name: 'Pierre Martin',
+          position: 'Owner',
+        },
+        billingAddress: {
+          street: '8 Rue du Commerce',
+          city: 'Lyon',
+          zipCode: '69002',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '8 Rue du Commerce',
+          city: 'Lyon',
+          zipCode: '69002',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Monday', 'Wednesday', 'Friday'],
+          paymentTerms: 7,
+          deliveryTime: '05:00-07:00',
+        },
+        status: 'active',
+        rating: 5,
+      },
+      {
+        name: 'Hôtel Grand Luxe',
         type: 'Hotel',
-        email: 'supplies@hotelgrand.com',
-        phone: '+33 1 45 67 89 01',
-        address: '789 Boulevard Royal, 75009 Paris',
+        email: 'kitchen@grandluxe.fr',
+        phone: '+33140123459',
+        address: '120 Boulevard Haussmann, 75009 Paris',
+        contact: {
+          name: 'Sophie Laurent',
+          position: 'Kitchen Manager',
+        },
+        billingAddress: {
+          street: '120 Boulevard Haussmann',
+          city: 'Paris',
+          zipCode: '75009',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '120 Boulevard Haussmann',
+          city: 'Paris',
+          zipCode: '75009',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          paymentTerms: 30,
+          deliveryTime: '06:00-08:00',
+        },
+        status: 'active',
+        rating: 5,
+      },
+      {
+        name: 'Boulangerie Artisanale',
+        type: 'Retail',
+        email: 'contact@boulangerie-artisan.fr',
+        phone: '+33140123460',
+        address: '32 Rue de la Boulangerie, 13001 Marseille',
+        contact: {
+          name: 'Jean Dupont',
+          position: 'Baker',
+        },
+        billingAddress: {
+          street: '32 Rue de la Boulangerie',
+          city: 'Marseille',
+          zipCode: '13001',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '32 Rue de la Boulangerie',
+          city: 'Marseille',
+          zipCode: '13001',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Monday', 'Wednesday', 'Friday', 'Saturday'],
+          paymentTerms: 15,
+          deliveryTime: '04:00-06:00',
+        },
+        status: 'active',
+        rating: 4,
+      },
+      {
+        name: 'Restaurant Le Gourmet',
+        type: 'Restaurant',
+        email: 'chef@legourmet.fr',
+        phone: '+33140123461',
+        address: '78 Rue Gastronomique, 06000 Nice',
+        contact: {
+          name: 'Chef Michel',
+          position: 'Chef',
+        },
+        billingAddress: {
+          street: '78 Rue Gastronomique',
+          city: 'Nice',
+          zipCode: '06000',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '78 Rue Gastronomique',
+          city: 'Nice',
+          zipCode: '06000',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Tuesday', 'Thursday', 'Saturday'],
+          paymentTerms: 30,
+          deliveryTime: '07:00-09:00',
+        },
+        status: 'active',
+        rating: 5,
+      },
+      {
+        name: 'Épicerie Bio Nature',
+        type: 'Grocery',
+        email: 'orders@bionature.fr',
+        phone: '+33140123462',
+        address: '54 Avenue Verte, 33000 Bordeaux',
+        contact: {
+          name: 'Claire Rousseau',
+          position: 'Manager',
+        },
+        billingAddress: {
+          street: '54 Avenue Verte',
+          city: 'Bordeaux',
+          zipCode: '33000',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '54 Avenue Verte',
+          city: 'Bordeaux',
+          zipCode: '33000',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Monday', 'Thursday'],
+          paymentTerms: 7,
+          deliveryTime: '08:00-10:00',
+        },
+        status: 'active',
+        rating: 4,
+      },
+      {
+        name: 'Café des Arts',
+        type: 'Cafe',
+        email: 'contact@cafedesarts.fr',
+        phone: '+33140123463',
+        address: '12 Place des Artistes, 31000 Toulouse',
+        contact: {
+          name: 'Luc Bernard',
+          position: 'Owner',
+        },
+        billingAddress: {
+          street: '12 Place des Artistes',
+          city: 'Toulouse',
+          zipCode: '31000',
+          country: 'France',
+        },
+        deliveryAddress: {
+          street: '12 Place des Artistes',
+          city: 'Toulouse',
+          zipCode: '31000',
+          country: 'France',
+        },
+        preferences: {
+          deliveryDays: ['Monday', 'Wednesday', 'Friday'],
+          paymentTerms: 15,
+          deliveryTime: '06:00-08:00',
+        },
         status: 'active',
         rating: 5,
       },
     ]);
 
-    console.log('🏢 Created clients');
+    console.log('👥 Created 8 clients');
 
-    // Create batches
-    const batches = await Batch.create([
+    // Create 6 batches
+    const batches = await Batch.bulkCreate([
       {
-        product: 'Fresh Milk',
+        batchNumber: 'BATCH-2025-001',
+        product: products[0].name,
         productType: 'milk',
-        productId: products[0]._id,
-        quantity: 2500,
+        productId: products[0].id,
+        quantity: 500,
         unit: 'L',
         status: 'completed',
-        operatorId: users[2]._id,
+        operatorId: users[2].id,
         operator: users[2].name,
-        startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        endTime: new Date(Date.now() - 20 * 60 * 60 * 1000),
+        startTime: new Date('2025-12-20T06:00:00'),
+        endTime: new Date('2025-12-20T10:00:00'),
         temperature: 72,
         pH: 6.8,
         yield: 98,
@@ -224,17 +517,19 @@ const seedData = async () => {
           pH: 'pass',
           bacteria: 'pass',
         },
+        notes: 'Excellent quality, passed all tests',
       },
       {
-        product: 'Greek Yogurt',
+        batchNumber: 'BATCH-2025-002',
+        product: products[2].name,
         productType: 'yogurt',
-        productId: products[1]._id,
-        quantity: 1200,
-        unit: 'L',
+        productId: products[2].id,
+        quantity: 300,
+        unit: 'kg',
         status: 'in-progress',
-        operatorId: users[2]._id,
+        operatorId: users[2].id,
         operator: users[2].name,
-        startTime: new Date(),
+        startTime: new Date('2025-12-21T08:00:00'),
         temperature: 43,
         pH: 4.5,
         qualityChecks: {
@@ -243,180 +538,376 @@ const seedData = async () => {
           bacteria: 'pending',
         },
       },
-    ]);
-
-    console.log('🏭 Created batches');
-
-    // Create orders
-    const orders = await Order.create([
       {
-        clientId: clients[0]._id,
-        clientName: clients[0].name,
-        status: 'delivered',
-        items: [
-          {
-            productId: products[0]._id,
-            productName: products[0].name,
-            quantity: 50,
-            unit: products[0].unit,
-            unitPrice: products[0].unitPrice,
-            total: 50 * products[0].unitPrice,
-          },
-          {
-            productId: products[2]._id,
-            productName: products[2].name,
-            quantity: 10,
-            unit: products[2].unit,
-            unitPrice: products[2].unitPrice,
-            total: 10 * products[2].unitPrice,
-          },
-        ],
-        subtotal: 180,
-        tax: 36,
-        total: 216,
-        deliveryAddress: clients[0].deliveryAddress!,
-        deliveryDate: new Date(),
-        deliveryTime: '07:00-09:00',
-        driverId: users[3]._id,
-        driverName: users[3].name,
-        tracking: {
-          status: 'delivered',
-          events: [
-            {
-              status: 'pending',
-              timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
-              note: 'Order created',
-            },
-            {
-              status: 'delivered',
-              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-              note: 'Order delivered',
-            },
-          ],
+        batchNumber: 'BATCH-2025-003',
+        product: products[4].name,
+        productType: 'cheese',
+        productId: products[4].id,
+        quantity: 200,
+        unit: 'kg',
+        status: 'completed',
+        operatorId: users[2].id,
+        operator: users[2].name,
+        startTime: new Date('2025-12-19T07:00:00'),
+        endTime: new Date('2025-12-19T15:00:00'),
+        temperature: 35,
+        pH: 5.2,
+        yield: 92,
+        qualityChecks: {
+          temperature: 'pass',
+          pH: 'pass',
+          bacteria: 'pass',
         },
-        createdBy: users[1]._id,
+        notes: 'Good texture and flavor',
       },
       {
-        clientId: clients[1]._id,
-        clientName: clients[1].name,
+        batchNumber: 'BATCH-2025-004',
+        product: products[1].name,
+        productType: 'milk',
+        productId: products[1].id,
+        quantity: 400,
+        unit: 'L',
         status: 'pending',
-        items: [
-          {
-            productId: products[0]._id,
-            productName: products[0].name,
-            quantity: 100,
-            unit: products[0].unit,
-            unitPrice: products[0].unitPrice,
-            total: 100 * products[0].unitPrice,
-          },
-          {
-            productId: products[1]._id,
-            productName: products[1].name,
-            quantity: 50,
-            unit: products[1].unit,
-            unitPrice: products[1].unitPrice,
-            total: 50 * products[1].unitPrice,
-          },
-        ],
-        subtotal: 410,
-        tax: 82,
-        total: 492,
-        deliveryAddress: {
-          street: '456 Avenue des Champs',
-          city: 'Paris',
-          zipCode: '75008',
-          country: 'France',
+        operatorId: users[2].id,
+        operator: users[2].name,
+        startTime: new Date('2025-12-22T09:00:00'),
+        temperature: 4,
+        qualityChecks: {
+          temperature: 'pending',
+          pH: 'pending',
+          bacteria: 'pending',
         },
-        deliveryDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        tracking: {
-          status: 'pending',
-          events: [
-            {
-              status: 'pending',
-              timestamp: new Date(),
-              note: 'Order created',
-            },
-          ],
+        notes: 'Awaiting final inspection',
+      },
+      {
+        batchNumber: 'BATCH-2025-005',
+        product: products[6].name,
+        productType: 'cream',
+        productId: products[6].id,
+        quantity: 250,
+        unit: 'L',
+        status: 'completed',
+        operatorId: users[2].id,
+        operator: users[2].name,
+        startTime: new Date('2025-12-21T10:00:00'),
+        endTime: new Date('2025-12-21T13:00:00'),
+        temperature: 65,
+        pH: 6.5,
+        yield: 98,
+        qualityChecks: {
+          temperature: 'pass',
+          pH: 'pass',
+          bacteria: 'pass',
         },
-        createdBy: users[1]._id,
+        notes: 'Premium quality cream',
+      },
+      {
+        batchNumber: 'BATCH-2025-006',
+        product: products[8].name,
+        productType: 'butter',
+        productId: products[8].id,
+        quantity: 300,
+        unit: 'kg',
+        status: 'completed',
+        operatorId: users[2].id,
+        operator: users[2].name,
+        startTime: new Date('2025-12-18T08:00:00'),
+        endTime: new Date('2025-12-18T14:00:00'),
+        temperature: 15,
+        pH: 6.4,
+        yield: 94,
+        qualityChecks: {
+          temperature: 'pass',
+          pH: 'pass',
+          bacteria: 'pass',
+        },
+        notes: 'Consistent quality',
       },
     ]);
 
-    console.log('📦 Created orders');
+    console.log('🏭 Created 6 batches');
 
-    // Create invoices
-    await Invoice.create([
+    // Create 7 orders
+    const orders = await Order.bulkCreate([
       {
-        orderId: orders[0]._id,
-        clientId: clients[0]._id,
+        orderNumber: 'ORD-2025-001',
+        clientId: clients[0].id,
         clientName: clients[0].name,
+        orderDate: new Date('2025-12-22'),
+        deliveryDate: new Date('2025-12-23'),
+        status: 'pending',
+        priority: 'high',
         items: [
-          {
-            description: products[0].name,
-            quantity: 50,
-            unitPrice: products[0].unitPrice,
-            total: 125,
-          },
-          {
-            description: products[2].name,
-            quantity: 10,
-            unitPrice: products[2].unitPrice,
-            total: 55,
-          },
+          { productId: products[0].id, productName: products[0].name, quantity: 50, unitPrice: 2.50, total: 125 },
+          { productId: products[2].id, productName: products[2].name, quantity: 20, unitPrice: 4.20, total: 84 },
         ],
-        subtotal: 180,
-        tax: 36,
-        total: 216,
-        status: 'paid',
-        issueDate: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        dueDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
-        paidDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        paymentMethod: 'Bank Transfer',
-        createdBy: users[1]._id,
+        subtotal: 209,
+        tax: 41.80,
+        total: 250.80,
+        paymentStatus: 'pending',
+        deliveryAddress: clients[0].deliveryAddress!,
+        notes: 'Urgent delivery needed',
+        createdBy: users[1].id,
       },
       {
-        orderId: orders[1]._id,
-        clientId: clients[1]._id,
+        orderNumber: 'ORD-2025-002',
+        clientId: clients[1].id,
         clientName: clients[1].name,
+        orderDate: new Date('2025-12-21'),
+        deliveryDate: new Date('2025-12-22'),
+        status: 'in-transit',
+        priority: 'medium',
+        driverId: users[3].id,
+        driverName: users[3].name,
         items: [
-          {
-            description: products[0].name,
-            quantity: 100,
-            unitPrice: products[0].unitPrice,
-            total: 250,
-          },
-          {
-            description: products[1].name,
-            quantity: 50,
-            unitPrice: products[1].unitPrice,
-            total: 160,
-          },
+          { productId: products[0].id, productName: products[0].name, quantity: 100, unitPrice: 2.50, total: 250 },
+          { productId: products[3].id, productName: products[3].name, quantity: 50, unitPrice: 3.80, total: 190 },
+          { productId: products[4].id, productName: products[4].name, quantity: 30, unitPrice: 6.50, total: 195 },
         ],
-        subtotal: 410,
-        tax: 82,
-        total: 492,
-        status: 'sent',
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        createdBy: users[1]._id,
+        subtotal: 635,
+        tax: 127,
+        total: 762,
+        paymentStatus: 'pending',
+        deliveryAddress: clients[1].deliveryAddress!,
+        createdBy: users[1].id,
       },
-    ]);
+      {
+        orderNumber: 'ORD-2025-003',
+        clientId: clients[2].id,
+        clientName: clients[2].name,
+        orderDate: new Date('2025-12-20'),
+        deliveryDate: new Date('2025-12-21'),
+        status: 'delivered',
+        priority: 'low',
+        driverId: users[3].id,
+        driverName: users[3].name,
+        items: [
+          { productId: products[0].id, productName: products[0].name, quantity: 30, unitPrice: 2.50, total: 75 },
+          { productId: products[6].id, productName: products[6].name, quantity: 10, unitPrice: 4.50, total: 45 },
+        ],
+        subtotal: 120,
+        tax: 24,
+        total: 144,
+        paymentStatus: 'paid',
+        paymentMethod: 'card',
+        deliveryAddress: clients[2].deliveryAddress!,
+        createdBy: users[1].id,
+      },
+      {
+        orderNumber: 'ORD-2025-004',
+        clientId: clients[3].id,
+        clientName: clients[3].name,
+        orderDate: new Date('2025-12-22'),
+        deliveryDate: new Date('2025-12-23'),
+        status: 'confirmed',
+        priority: 'high',
+        items: [
+          { productId: products[0].id, productName: products[0].name, quantity: 80, unitPrice: 2.50, total: 200 },
+          { productId: products[2].id, productName: products[2].name, quantity: 40, unitPrice: 4.20, total: 168 },
+          { productId: products[6].id, productName: products[6].name, quantity: 25, unitPrice: 4.50, total: 112.50 },
+          { productId: products[8].id, productName: products[8].name, quantity: 20, unitPrice: 5.00, total: 100 },
+        ],
+        subtotal: 580.50,
+        tax: 116.10,
+        total: 696.60,
+        paymentStatus: 'pending',
+        deliveryAddress: clients[3].deliveryAddress!,
+        createdBy: users[1].id,
+      },
+      {
+        orderNumber: 'ORD-2025-005',
+        clientId: clients[4].id,
+        clientName: clients[4].name,
+        orderDate: new Date('2025-12-21'),
+        deliveryDate: new Date('2025-12-22'),
+        status: 'delivered',
+        priority: 'medium',
+        driverId: users[3].id,
+        driverName: users[3].name,
+        items: [
+          { productId: products[0].id, productName: products[0].name, quantity: 40, unitPrice: 2.50, total: 100 },
+          { productId: products[6].id, productName: products[6].name, quantity: 15, unitPrice: 4.50, total: 67.50 },
+          { productId: products[8].id, productName: products[8].name, quantity: 25, unitPrice: 5.00, total: 125 },
+        ],
+        subtotal: 292.50,
+        tax: 58.50,
+        total: 351,
+        paymentStatus: 'paid',
+        paymentMethod: 'transfer',
+        deliveryAddress: clients[4].deliveryAddress!,
+        createdBy: users[1].id,
+      },
+      {
+        orderNumber: 'ORD-2025-006',
+        clientId: clients[5].id,
+        clientName: clients[5].name,
+        orderDate: new Date('2025-12-22'),
+        deliveryDate: new Date('2025-12-24'),
+        status: 'pending',
+        priority: 'low',
+        items: [
+          { productId: products[2].id, productName: products[2].name, quantity: 25, unitPrice: 4.20, total: 105 },
+          { productId: products[4].id, productName: products[4].name, quantity: 15, unitPrice: 6.50, total: 97.50 },
+        ],
+        subtotal: 202.50,
+        tax: 40.50,
+        total: 243,
+        paymentStatus: 'pending',
+        deliveryAddress: clients[5].deliveryAddress!,
+        createdBy: users[1].id,
+      },
+      {
+        orderNumber: 'ORD-2025-007',
+        clientId: clients[6].id,
+        clientName: clients[6].name,
+        orderDate: new Date('2025-12-19'),
+        deliveryDate: new Date('2025-12-20'),
+        status: 'delivered',
+        priority: 'medium',
+        driverId: users[3].id,
+        driverName: users[3].name,
+        items: [
+          { productId: products[1].id, productName: products[1].name, quantity: 35, unitPrice: 3.50, total: 122.50 },
+          { productId: products[3].id, productName: products[3].name, quantity: 30, unitPrice: 3.80, total: 114 },
+        ],
+        subtotal: 236.50,
+        tax: 47.30,
+        total: 283.80,
+        paymentStatus: 'paid',
+        paymentMethod: 'cash',
+        deliveryAddress: clients[6].deliveryAddress!,
+        createdBy: users[1].id,
+      },
+    ], { individualHooks: true });
 
-    console.log('📄 Created invoices');
+    console.log('📋 Created 7 orders');
 
-    console.log('\n✅ Database seeded successfully!');
-    console.log('\n📧 Test Users:');
-    console.log('  Admin: admin@dairy.com / password123');
-    console.log('  Manager: manager@dairy.com / password123');
-    console.log('  Operator: operator@dairy.com / password123');
-    console.log('  Driver: driver@dairy.com / password123');
+    // Create 5 invoices
+    const invoices = await Invoice.bulkCreate([
+      {
+        invoiceNumber: 'INV-2025-001',
+        orderId: orders[2].id,
+        clientId: clients[2].id,
+        clientName: clients[2].name,
+        issueDate: new Date('2025-12-21'),
+        dueDate: new Date('2025-12-28'),
+        status: 'paid',
+        items: [
+          { description: products[0].name, quantity: 30, unitPrice: 2.50, total: 75 },
+          { description: products[6].name, quantity: 10, unitPrice: 4.50, total: 45 },
+        ],
+        subtotal: 120,
+        tax: 24,
+        total: 144,
+        paidAmount: 144,
+        paymentMethod: 'card',
+        paidDate: new Date('2025-12-21'),
+        notes: 'Payment received in full',
+        createdBy: users[1].id,
+      },
+      {
+        invoiceNumber: 'INV-2025-002',
+        orderId: orders[4].id,
+        clientId: clients[4].id,
+        clientName: clients[4].name,
+        issueDate: new Date('2025-12-22'),
+        dueDate: new Date('2026-01-06'),
+        status: 'paid',
+        items: [
+          { description: products[0].name, quantity: 40, unitPrice: 2.50, total: 100 },
+          { description: products[6].name, quantity: 15, unitPrice: 4.50, total: 67.50 },
+          { description: products[8].name, quantity: 25, unitPrice: 5.00, total: 125 },
+        ],
+        subtotal: 292.50,
+        tax: 58.50,
+        total: 351,
+        paidAmount: 351,
+        paymentMethod: 'transfer',
+        paidDate: new Date('2025-12-22'),
+        notes: 'Bank transfer received',
+        createdBy: users[1].id,
+      },
+      {
+        invoiceNumber: 'INV-2025-003',
+        orderId: orders[6].id,
+        clientId: clients[6].id,
+        clientName: clients[6].name,
+        issueDate: new Date('2025-12-20'),
+        dueDate: new Date('2025-12-27'),
+        status: 'paid',
+        items: [
+          { description: products[1].name, quantity: 35, unitPrice: 3.50, total: 122.50 },
+          { description: products[3].name, quantity: 30, unitPrice: 3.80, total: 114 },
+        ],
+        subtotal: 236.50,
+        tax: 47.30,
+        total: 283.80,
+        paidAmount: 283.80,
+        paymentMethod: 'cash',
+        paidDate: new Date('2025-12-20'),
+        createdBy: users[1].id,
+      },
+      {
+        invoiceNumber: 'INV-2025-004',
+        orderId: orders[0].id,
+        clientId: clients[0].id,
+        clientName: clients[0].name,
+        issueDate: new Date('2025-12-22'),
+        dueDate: new Date('2026-01-21'),
+        status: 'sent',
+        items: [
+          { description: products[0].name, quantity: 50, unitPrice: 2.50, total: 125 },
+          { description: products[2].name, quantity: 20, unitPrice: 4.20, total: 84 },
+        ],
+        subtotal: 209,
+        tax: 41.80,
+        total: 250.80,
+        paidAmount: 0,
+        notes: 'Payment terms: 30 days',
+        createdBy: users[1].id,
+      },
+      {
+        invoiceNumber: 'INV-2025-005',
+        orderId: orders[3].id,
+        clientId: clients[3].id,
+        clientName: clients[3].name,
+        issueDate: new Date('2025-12-22'),
+        dueDate: new Date('2026-01-21'),
+        status: 'sent',
+        items: [
+          { description: products[0].name, quantity: 80, unitPrice: 2.50, total: 200 },
+          { description: products[2].name, quantity: 40, unitPrice: 4.20, total: 168 },
+          { description: products[6].name, quantity: 25, unitPrice: 4.50, total: 112.50 },
+          { description: products[8].name, quantity: 20, unitPrice: 5.00, total: 100 },
+        ],
+        subtotal: 580.50,
+        tax: 116.10,
+        total: 696.60,
+        paidAmount: 0,
+        notes: 'Hotel - Net 30 payment terms',
+        createdBy: users[1].id,
+      },
+    ], { individualHooks: true });
 
+    console.log('💰 Created 5 invoices');
+
+    console.log('\n✅ Seed completed successfully!');
+    console.log('\n📊 Summary:');
+    console.log(`   - Users: ${users.length}`);
+    console.log(`   - Products: ${products.length}`);
+    console.log(`   - Clients: ${clients.length}`);
+    console.log(`   - Batches: ${batches.length}`);
+    console.log(`   - Orders: ${orders.length}`);
+    console.log(`   - Invoices: ${invoices.length}`);
+    console.log('\n🔑 Test Credentials:');
+    console.log('   Email: admin@dairy.com');
+    console.log('   Password: admin123');
+    
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('❌ Seed error:', error);
     process.exit(1);
   }
 };
 
-// Run seeder
-connectDB().then(() => seedData());
+seedData();

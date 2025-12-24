@@ -1,88 +1,117 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import { Table, Column, Model, DataType } from 'sequelize-typescript';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
-export interface IUser extends Document {
-  name: string;
-  email: string;
-  password: string;
-  role: 'admin' | 'manager' | 'operator' | 'driver' | 'viewer';
+@Table({
+  tableName: 'users',
+  timestamps: true,
+})
+export class User extends Model {
+  @Column({
+    type: DataType.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  })
+  id!: number;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  name!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  email!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  password!: string;
+
+  @Column({
+    type: DataType.ENUM('admin', 'manager', 'operator', 'driver', 'viewer'),
+    allowNull: false,
+    defaultValue: 'viewer',
+  })
+  role!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   phone?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   avatar?: string;
-  status: 'active' | 'inactive';
-  permissions: string[];
-  lastLogin?: Date;
+
+  @Column({
+    type: DataType.ENUM('active', 'inactive', 'suspended'),
+    allowNull: false,
+    defaultValue: 'active',
+  })
+  status!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   resetPasswordToken?: string;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
   resetPasswordExpire?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  comparePassword(password: string): Promise<boolean>;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  lastLogin?: Date;
+
+  // Instance method to compare password
+  async comparePassword(enteredPassword: string): Promise<boolean> {
+    return bcrypt.compare(enteredPassword, this.password);
+  }
+
+  // Generate password reset token
+  getResetPasswordToken(): string {
+    const resetToken = crypto.randomBytes(20).toString('hex');
+
+    this.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    this.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    return resetToken;
+  }
+
+  // Static method to initialize lifecycle hooks
+  static initHooks(): void {
+    User.beforeCreate(async (user: User) => {
+      if (user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    });
+
+    User.beforeUpdate(async (user: User) => {
+      if (user.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    });
+  }
 }
 
-const userSchema = new Schema<IUser>(
-  {
-    name: {
-      type: String,
-      required: [true, 'Name is required'],
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: [true, 'Email is required'],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
-    },
-    password: {
-      type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false,
-    },
-    role: {
-      type: String,
-      enum: ['admin', 'manager', 'operator', 'driver', 'viewer'],
-      default: 'viewer',
-    },
-    phone: {
-      type: String,
-      trim: true,
-    },
-    avatar: {
-      type: String,
-    },
-    status: {
-      type: String,
-      enum: ['active', 'inactive'],
-      default: 'active',
-    },
-    permissions: [{
-      type: String,
-    }],
-    lastLogin: {
-      type: Date,
-    },
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-// Method to compare password
-userSchema.methods.comparePassword = async function (password: string): Promise<boolean> {
-  return await bcrypt.compare(password, this.password);
-};
-
-export default mongoose.model<IUser>('User', userSchema);
+export default User;

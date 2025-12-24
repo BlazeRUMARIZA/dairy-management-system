@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Op } from 'sequelize';
 import Client from '../models/Client';
 import { AuthRequest } from '../middleware/auth';
 
@@ -9,21 +10,28 @@ export const getClients = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const { type, status, search } = req.query;
     
-    let query: any = {};
+    let where: any = {};
     
     if (type) {
-      query.type = type;
+      where.type = type;
     }
     
     if (status) {
-      query.status = status;
+      where.status = status;
     }
     
     if (search) {
-      query.$text = { $search: search as string };
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { phone: { [Op.like]: `%${search}%` } },
+      ];
     }
 
-    const clients = await Client.find(query).sort({ createdAt: -1 });
+    const clients = await Client.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+    });
 
     res.status(200).json({
       success: true,
@@ -43,7 +51,7 @@ export const getClients = async (req: AuthRequest, res: Response): Promise<void>
 // @access  Private
 export const getClient = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const client = await Client.findById(req.params.id);
+    const client = await Client.findByPk(req.params.id);
 
     if (!client) {
       res.status(404).json({
@@ -89,14 +97,7 @@ export const createClient = async (req: AuthRequest, res: Response): Promise<voi
 // @access  Private (Admin, Manager)
 export const updateClient = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const client = await Client.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const client = await Client.findByPk(req.params.id);
 
     if (!client) {
       res.status(404).json({
@@ -105,6 +106,8 @@ export const updateClient = async (req: AuthRequest, res: Response): Promise<voi
       });
       return;
     }
+
+    await client.update(req.body);
 
     res.status(200).json({
       success: true,
@@ -123,7 +126,7 @@ export const updateClient = async (req: AuthRequest, res: Response): Promise<voi
 // @access  Private (Admin)
 export const deleteClient = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const client = await Client.findByIdAndDelete(req.params.id);
+    const client = await Client.findByPk(req.params.id);
 
     if (!client) {
       res.status(404).json({
@@ -132,6 +135,8 @@ export const deleteClient = async (req: AuthRequest, res: Response): Promise<voi
       });
       return;
     }
+
+    await client.destroy();
 
     res.status(200).json({
       success: true,
@@ -150,7 +155,7 @@ export const deleteClient = async (req: AuthRequest, res: Response): Promise<voi
 // @access  Private
 export const getClientStats = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const client = await Client.findById(req.params.id);
+    const client = await Client.findByPk(req.params.id);
 
     if (!client) {
       res.status(404).json({

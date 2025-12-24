@@ -7,6 +7,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/database';
 import { errorHandler, notFound } from './middleware/error';
+import emailService from './services/emailService';
+import cronJobs from './services/cronJobs';
 
 // Load env vars
 dotenv.config();
@@ -23,10 +25,29 @@ app.use(express.urlencoded({ extended: true }));
 
 // Security middleware
 app.use(helmet());
+
+// CORS configuration - allow multiple origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -66,8 +87,8 @@ app.use(`/api/${apiVersion}/batches`, batchRoutes);
 app.use(`/api/${apiVersion}/invoices`, invoiceRoutes);
 app.use(`/api/${apiVersion}`, dashboardRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
+// Health check endpoints
+app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'API is running',
@@ -76,8 +97,18 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/api/v1/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is running',
+    environment: process.env.NODE_ENV,
+    version: apiVersion,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Home route
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'Dairy Management System API',
@@ -93,7 +124,7 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`
   ╔════════════════════════════════════════╗
   ║   🥛 Dairy Management System API      ║
@@ -101,12 +132,29 @@ const server = app.listen(PORT, () => {
   ║   Environment: ${process.env.NODE_ENV || 'development'}           ║
   ╚════════════════════════════════════════╝
   `);
+
+  // Test email service
+  await emailService.testEmailConnection();
+
+  // Start cron jobs for automated notifications
+  cronJobs.startAllCronJobs();
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err: Error) => {
   console.log(`❌ Unhandled Rejection: ${err.message}`);
+  cronJobs.stopAllCronJobs();
   server.close(() => process.exit(1));
+});
+
+// Handle SIGTERM gracefully
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM signal received: closing HTTP server');
+  cronJobs.stopAllCronJobs();
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
 });
 
 export default app;

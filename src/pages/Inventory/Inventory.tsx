@@ -4,12 +4,14 @@ import { Badge } from '../../components/UI/Badge'
 import { Button } from '../../components/UI/Button'
 import { Modal } from '../../components/UI/Modal'
 import { Input, Select } from '../../components/UI/Input'
-import { Package, AlertTriangle, Search, Plus, Edit, Trash2, Eye, TrendingDown, TrendingUp } from 'lucide-react'
-import { productService } from '../../services/dataService'
+import { Package, AlertTriangle, Search, Plus, Edit, Trash2, Eye, TrendingDown, TrendingUp, Loader2 } from 'lucide-react'
+import api from '../../services/api'
 import { format } from 'date-fns'
 
 const Inventory: React.FC = () => {
   const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [showProductModal, setShowProductModal] = useState(false)
@@ -19,6 +21,7 @@ const Inventory: React.FC = () => {
   const [editMode, setEditMode] = useState(false)
   const [stockOperation, setStockOperation] = useState<'add' | 'remove'>('add')
   const [stockQuantity, setStockQuantity] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     category: 'milk',
@@ -41,9 +44,31 @@ const Inventory: React.FC = () => {
     loadProducts()
   }, [])
 
-  const loadProducts = () => {
-    const data = productService.getAll()
-    setProducts(data)
+  const loadProducts = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await api.products.getAll()
+      
+      if (response.success && response.data) {
+        // Calculate status for each product
+        const productsWithStatus = response.data.map((p: any) => ({
+          ...p,
+          status: p.currentStock <= p.minThreshold ? 
+                  (p.currentStock <= p.minThreshold * 0.5 ? 'critical' : 'low') : 
+                  'normal'
+        }))
+        setProducts(productsWithStatus)
+      } else {
+        throw new Error('Failed to fetch products')
+      }
+    } catch (err: any) {
+      console.error('Failed to load products:', err)
+      setError(err?.message || 'Failed to load products')
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCreate = () => {
@@ -103,14 +128,23 @@ const Inventory: React.FC = () => {
     setShowStockModal(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      productService.delete(id)
-      loadProducts()
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this product?')) return
+    
+    try {
+      const response = await api.products.delete(id)
+      if (response.success) {
+        setProducts(products.filter(p => p.id !== id))
+      } else {
+        alert('Failed to delete product')
+      }
+    } catch (err: any) {
+      console.error('Failed to delete product:', err)
+      alert(err?.message || 'Failed to delete product')
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     const productData = {
@@ -132,26 +166,53 @@ const Inventory: React.FC = () => {
       image: '/placeholder-product.jpg'
     }
 
-    if (editMode && selectedProduct) {
-      productService.update(selectedProduct.id, productData)
-    } else {
-      productService.create(productData)
-    }
+    try {
+      setSubmitting(true)
+      let response
+      
+      if (editMode && selectedProduct) {
+        response = await api.products.update(selectedProduct.id, productData)
+      } else {
+        response = await api.products.create(productData)
+      }
 
-    loadProducts()
-    setShowProductModal(false)
+      if (response.success) {
+        await loadProducts() // Reload the entire list
+        setShowProductModal(false)
+      } else {
+        alert('Failed to save product')
+      }
+    } catch (err: any) {
+      console.error('Failed to save product:', err)
+      alert(err?.message || 'Failed to save product')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const handleStockSubmit = (e: React.FormEvent) => {
+  const handleStockSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProduct || !stockQuantity) return
 
     const quantity = parseFloat(stockQuantity)
-    const change = stockOperation === 'add' ? quantity : -quantity
-
-    productService.updateStock(selectedProduct.id, change)
-    loadProducts()
-    setShowStockModal(false)
+    
+    try {
+      const response = await api.products.updateStock(
+        selectedProduct.id, 
+        quantity, 
+        stockOperation
+      )
+      
+      if (response.success) {
+        await loadProducts() // Reload the entire list
+        setShowStockModal(false)
+      } else {
+        alert('Failed to update stock')
+      }
+    } catch (err: any) {
+      console.error('Failed to update stock:', err)
+      alert(err?.message || 'Failed to update stock')
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -171,8 +232,36 @@ const Inventory: React.FC = () => {
     return matchesFilter && matchesSearch
   })
 
-  const lowStockProducts = productService.getLowStock()
-  const totalValue = products.reduce((sum, p) => sum + (p.currentStock * p.unitPrice), 0)
+  const lowStockProducts = products.filter(p => p.status !== 'normal')
+  const totalValue = products.reduce((sum, p) => sum + (Number(p.currentStock) * Number(p.unitPrice)), 0)
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-primary-600" size={40} />
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="text-red-600 dark:text-red-400" size={20} />
+          <span className="text-red-800 dark:text-red-200">{error}</span>
+        </div>
+        <Button 
+          variant="secondary" 
+          className="mt-4" 
+          onClick={loadProducts}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -276,7 +365,7 @@ const Inventory: React.FC = () => {
             </h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lowStockProducts.slice(0, 6).map(product => (
+            {lowStockProducts.slice(0, 6).map((product: any) => (
               <div key={product.id} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                 <div>
                   <p className="font-medium">{product.name}</p>
@@ -335,7 +424,7 @@ const Inventory: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    €{product.unitPrice.toFixed(2)}/{product.unit}
+                    €{Number(product.unitPrice).toFixed(2)}/{product.unit}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{product.location}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -632,13 +721,13 @@ const Inventory: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-600">Unit Price</p>
                   <p className="text-lg font-bold text-green-600">
-                    €{selectedProduct.unitPrice.toFixed(2)}/{selectedProduct.unit}
+                    €{Number(selectedProduct.unitPrice).toFixed(2)}/{selectedProduct.unit}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Cost Price</p>
                   <p className="text-lg font-bold">
-                    €{selectedProduct.costPrice.toFixed(2)}/{selectedProduct.unit}
+                    €{Number(selectedProduct.costPrice).toFixed(2)}/{selectedProduct.unit}
                   </p>
                 </div>
               </div>

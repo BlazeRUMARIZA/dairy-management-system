@@ -6,7 +6,7 @@ import { Play, Plus, Edit, Trash2, Eye, CheckCircle } from 'lucide-react'
 import { Modal } from '../../components/UI/Modal'
 import { Input } from '../../components/UI/Input'
 import { Select } from '../../components/UI/Input'
-import { batchService } from '../../services/dataService'
+import api from '../../services/api'
 
 const Production: React.FC = () => {
   const [batches, setBatches] = useState<any[]>([])
@@ -14,6 +14,8 @@ const Production: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedBatch, setSelectedBatch] = useState<any>(null)
   const [editMode, setEditMode] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     product: '',
     productType: 'milk',
@@ -28,9 +30,18 @@ const Production: React.FC = () => {
     loadBatches()
   }, [])
 
-  const loadBatches = () => {
-    const data = batchService.getAll()
-    setBatches(data)
+  const loadBatches = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await api.batches.getAll()
+      setBatches(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load batches:', err)
+      setError(err.message || 'Failed to load batches')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCreate = () => {
@@ -67,45 +78,64 @@ const Production: React.FC = () => {
     setShowDetailModal(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this batch?')) {
-      batchService.delete(id)
-      loadBatches()
+      try {
+        await api.batches.delete(id)
+        await loadBatches()
+      } catch (err: any) {
+        console.error('Failed to delete batch:', err)
+        alert('Failed to delete batch')
+      }
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Generate a unique batch number if creating new batch
+    const batchNumber = editMode && selectedBatch 
+      ? selectedBatch.batchNumber 
+      : `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    
     const batchData = {
+      batchNumber,
       product: formData.product,
       productType: formData.productType,
       quantity: parseFloat(formData.quantity),
       unit: formData.productType === 'cheese' ? 'kg' : 'L',
       operator: formData.operator,
-      operatorId: '1',
+      operatorId: 1, // Default to admin user (ID: 1) - in production, use actual logged-in user
+      startTime: editMode && selectedBatch?.startTime ? selectedBatch.startTime : new Date().toISOString(),
       temperature: formData.temperature ? parseFloat(formData.temperature) : null,
       pH: formData.pH ? parseFloat(formData.pH) : null,
       notes: formData.notes,
-      yield: 0,
-      qualityChecks: {
-        temperature: 'pending',
-        pH: 'pending',
-        bacteria: 'pending'
+      yield: editMode && selectedBatch?.yield ? selectedBatch.yield : 0,
+      qualityChecks: editMode && selectedBatch?.qualityChecks 
+        ? selectedBatch.qualityChecks 
+        : {
+          temperature: 'pending',
+          pH: 'pending',
+          bacteria: 'pending'
+        }
+    }
+
+    try {
+      if (editMode && selectedBatch) {
+        await api.batches.update(selectedBatch.id, batchData)
+      } else {
+        await api.batches.create(batchData)
       }
-    }
 
-    if (editMode && selectedBatch) {
-      batchService.update(selectedBatch.id, batchData)
-    } else {
-      batchService.create(batchData)
+      await loadBatches()
+      setShowBatchModal(false)
+    } catch (err: any) {
+      console.error('Failed to save batch:', err)
+      alert('Failed to save batch')
     }
-
-    loadBatches()
-    setShowBatchModal(false)
   }
 
-  const handleStatusChange = (id: string, status: string) => {
+  const handleStatusChange = async (id: string, status: string) => {
     const updates: any = { status }
     
     if (status === 'in-progress') {
@@ -120,8 +150,13 @@ const Production: React.FC = () => {
       }
     }
     
-    batchService.update(id, updates)
-    loadBatches()
+    try {
+      await api.batches.update(id, updates)
+      await loadBatches()
+    } catch (err: any) {
+      console.error('Failed to update batch status:', err)
+      alert('Failed to update batch status')
+    }
   }
 
   const batchStatusColors: Record<string, 'success' | 'warning' | 'info'> = {

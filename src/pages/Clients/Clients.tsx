@@ -4,16 +4,19 @@ import { Badge } from '../../components/UI/Badge'
 import { Button } from '../../components/UI/Button'
 import { Modal } from '../../components/UI/Modal'
 import { Input, Select } from '../../components/UI/Input'
-import { Users, Plus, Edit, Trash2, Eye, Star, TrendingUp, Package } from 'lucide-react'
-import { clientService, orderService } from '../../services/dataService'
+import { Users, Plus, Edit, Trash2, Eye, Star, TrendingUp, Package, Loader2, AlertTriangle } from 'lucide-react'
+import api from '../../services/api'
 import { format } from 'date-fns'
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showClientModal, setShowClientModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [editMode, setEditMode] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     type: 'restaurant',
@@ -31,9 +34,24 @@ const Clients: React.FC = () => {
     loadClients()
   }, [])
 
-  const loadClients = () => {
-    const data = clientService.getAll()
-    setClients(data)
+  const loadClients = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await api.clients.getAll()
+      
+      if (response.success && response.data) {
+        setClients(response.data)
+      } else {
+        throw new Error('Failed to fetch clients')
+      }
+    } catch (err: any) {
+      console.error('Failed to load clients:', err)
+      setError(err?.message || 'Failed to load clients')
+      setClients([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCreate = () => {
@@ -56,34 +74,55 @@ const Clients: React.FC = () => {
   const handleEdit = (client: any) => {
     setEditMode(true)
     setSelectedClient(client)
+    
+    // Parse preferences if it's a JSON string
+    const preferences = typeof client.preferences === 'string' 
+      ? JSON.parse(client.preferences) 
+      : client.preferences;
+    
     setFormData({
-      name: client.name,
-      type: client.type,
-      email: client.email,
-      phone: client.phone,
-      address: client.address.street,
-      contactPerson: client.contactPerson,
-      paymentTerms: client.preferences?.paymentTerms?.toString() || '30',
-      deliveryDays: client.preferences?.deliveryDays || [],
-      deliveryTime: client.preferences?.deliveryTime || '08:00-10:00',
+      name: client.name || '',
+      type: client.type || 'restaurant',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '', // address is a simple string field
+      contactPerson: client.contactPerson || '',
+      paymentTerms: (preferences?.paymentTerms?.toString()) || '30',
+      deliveryDays: preferences?.deliveryDays || [],
+      deliveryTime: preferences?.deliveryTime || '08:00-10:00',
       notes: client.notes || ''
     })
     setShowClientModal(true)
   }
 
   const handleView = (client: any) => {
-    setSelectedClient(client)
+    // Parse JSON fields if they're strings
+    const parsedClient = {
+      ...client,
+      preferences: typeof client.preferences === 'string' ? JSON.parse(client.preferences) : client.preferences,
+      favoriteProducts: typeof client.favoriteProducts === 'string' ? JSON.parse(client.favoriteProducts) : client.favoriteProducts
+    }
+    setSelectedClient(parsedClient)
     setShowDetailModal(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this client? All their order history will be preserved but the client profile will be removed.')) {
-      clientService.delete(id)
-      loadClients()
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this client? All their order history will be preserved but the client profile will be removed.')) return
+    
+    try {
+      const response = await api.clients.delete(id)
+      if (response.success) {
+        setClients(clients.filter(c => c.id !== id))
+      } else {
+        alert('Failed to delete client')
+      }
+    } catch (err: any) {
+      console.error('Failed to delete client:', err)
+      alert(err?.message || 'Failed to delete client')
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     const clientData = {
@@ -91,12 +130,7 @@ const Clients: React.FC = () => {
       type: formData.type,
       email: formData.email,
       phone: formData.phone,
-      address: {
-        street: formData.address,
-        city: 'Paris',
-        postalCode: '75001',
-        country: 'France'
-      },
+      address: formData.address, // Simple string field
       contactPerson: formData.contactPerson,
       billingAddress: {
         street: formData.address,
@@ -120,14 +154,28 @@ const Clients: React.FC = () => {
       rating: 5
     }
 
-    if (editMode && selectedClient) {
-      clientService.update(selectedClient.id, clientData)
-    } else {
-      clientService.create(clientData)
-    }
+    try {
+      setSubmitting(true)
+      let response
+      
+      if (editMode && selectedClient) {
+        response = await api.clients.update(selectedClient.id, clientData)
+      } else {
+        response = await api.clients.create(clientData)
+      }
 
-    loadClients()
-    setShowClientModal(false)
+      if (response.success) {
+        await loadClients()
+        setShowClientModal(false)
+      } else {
+        alert('Failed to save client')
+      }
+    } catch (err: any) {
+      console.error('Failed to save client:', err)
+      alert(err?.message || 'Failed to save client')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDeliveryDayToggle = (day: string) => {
@@ -139,8 +187,9 @@ const Clients: React.FC = () => {
     }))
   }
 
-  const getClientOrders = (clientId: string) => {
-    return orderService.getByClientId(clientId)
+  const getClientOrders = (_clientId: string) => {
+    // This would need to be updated when Orders page is migrated
+    return []
   }
 
   const renderStars = (rating: number) => {
@@ -169,6 +218,34 @@ const Clients: React.FC = () => {
   }
 
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-primary-600" size={40} />
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="text-red-600 dark:text-red-400" size={20} />
+          <span className="text-red-800 dark:text-red-200">{error}</span>
+        </div>
+        <Button 
+          variant="secondary" 
+          className="mt-4" 
+          onClick={loadClients}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -497,12 +574,15 @@ const Clients: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Delivery Days:</span>
                   <span className="font-medium">
-                    {selectedClient.preferences.deliveryDays.join(', ')}
+                    {(selectedClient.preferences?.deliveryDays && Array.isArray(selectedClient.preferences.deliveryDays)
+                      ? selectedClient.preferences.deliveryDays
+                      : []
+                    ).join(', ') || 'Not specified'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Preferred Time:</span>
-                  <span className="font-medium">{selectedClient.preferences.deliveryTime}</span>
+                  <span className="font-medium">{selectedClient.preferences?.deliveryTime || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Payment Terms:</span>
@@ -511,7 +591,7 @@ const Clients: React.FC = () => {
               </div>
             </div>
 
-            {selectedClient.favoriteProducts && selectedClient.favoriteProducts.length > 0 && (
+            {selectedClient.favoriteProducts && Array.isArray(selectedClient.favoriteProducts) && selectedClient.favoriteProducts.length > 0 && (
               <div className="border-t pt-4">
                 <h4 className="font-semibold mb-3">Favorite Products</h4>
                 <div className="flex flex-wrap gap-2">

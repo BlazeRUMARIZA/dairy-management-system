@@ -1,7 +1,9 @@
 import { Response } from 'express';
+import { Op } from 'sequelize';
 import Invoice from '../models/Invoice';
 import Order from '../models/Order';
 import Client from '../models/Client';
+import { User } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 
 // @desc    Get all invoices
@@ -11,30 +13,34 @@ export const getInvoices = async (req: AuthRequest, res: Response): Promise<void
   try {
     const { status, clientId, startDate, endDate } = req.query;
     
-    let query: any = {};
+    let where: any = {};
     
     if (status) {
-      query.status = status;
+      where.status = status;
     }
     
     if (clientId) {
-      query.clientId = clientId;
+      where.clientId = clientId;
     }
     
     if (startDate || endDate) {
-      query.issueDate = {};
+      where.issueDate = {};
       if (startDate) {
-        query.issueDate.$gte = new Date(startDate as string);
+        where.issueDate[Op.gte] = new Date(startDate as string);
       }
       if (endDate) {
-        query.issueDate.$lte = new Date(endDate as string);
+        where.issueDate[Op.lte] = new Date(endDate as string);
       }
     }
 
-    const invoices = await Invoice.find(query)
-      .populate('clientId', 'name type email')
-      .populate('orderId')
-      .sort({ createdAt: -1 });
+    const invoices = await Invoice.findAll({
+      where,
+      include: [
+        { model: Client, as: 'client', attributes: ['id', 'name', 'type', 'email'] },
+        { model: Order, as: 'order' },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
 
     res.status(200).json({
       success: true,
@@ -54,10 +60,13 @@ export const getInvoices = async (req: AuthRequest, res: Response): Promise<void
 // @access  Private
 export const getInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
-      .populate('clientId')
-      .populate('orderId')
-      .populate('createdBy', 'name');
+    const invoice = await Invoice.findByPk(req.params.id, {
+      include: [
+        { model: Client, as: 'client' },
+        { model: Order, as: 'order' },
+        { model: User, as: 'creator', attributes: ['id', 'name'] },
+      ],
+    });
 
     if (!invoice) {
       res.status(404).json({
@@ -84,7 +93,9 @@ export const getInvoice = async (req: AuthRequest, res: Response): Promise<void>
 // @access  Private (Admin, Manager)
 export const createInvoiceFromOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findById(req.params.orderId).populate('clientId');
+    const order = await Order.findByPk(req.params.orderId, {
+      include: [{ model: Client, as: 'client' }],
+    });
 
     if (!order) {
       res.status(404).json({
@@ -94,7 +105,7 @@ export const createInvoiceFromOrder = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const items = order.items.map(item => ({
+    const items = order.items.map((item: any) => ({
       description: item.productName,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -106,8 +117,8 @@ export const createInvoiceFromOrder = async (req: AuthRequest, res: Response): P
     dueDate.setDate(dueDate.getDate() + paymentTerms);
 
     const invoice = await Invoice.create({
-      orderId: order._id,
-      clientId: order.clientId._id,
+      orderId: order.id,
+      clientId: order.clientId,
       clientName: order.clientName,
       items,
       subtotal: order.subtotal,
@@ -116,7 +127,7 @@ export const createInvoiceFromOrder = async (req: AuthRequest, res: Response): P
       total: order.total,
       issueDate: new Date(),
       dueDate,
-      createdBy: req.user?._id,
+      createdBy: req.user?.id,
     });
 
     res.status(201).json({
@@ -138,7 +149,7 @@ export const createInvoice = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const { clientId, items, dueDate, discount, termsAndConditions, notes } = req.body;
 
-    const client = await Client.findById(clientId);
+    const client = await Client.findByPk(clientId);
     if (!client) {
       res.status(404).json({
         success: false,
@@ -167,7 +178,7 @@ export const createInvoice = async (req: AuthRequest, res: Response): Promise<vo
       dueDate,
       termsAndConditions,
       notes,
-      createdBy: req.user?._id,
+      createdBy: req.user?.id,
     });
 
     res.status(201).json({
@@ -187,14 +198,7 @@ export const createInvoice = async (req: AuthRequest, res: Response): Promise<vo
 // @access  Private (Admin, Manager)
 export const updateInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const invoice = await Invoice.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const invoice = await Invoice.findByPk(req.params.id);
 
     if (!invoice) {
       res.status(404).json({
@@ -203,6 +207,8 @@ export const updateInvoice = async (req: AuthRequest, res: Response): Promise<vo
       });
       return;
     }
+
+    await invoice.update(req.body);
 
     res.status(200).json({
       success: true,
@@ -223,7 +229,7 @@ export const markInvoiceAsPaid = async (req: AuthRequest, res: Response): Promis
   try {
     const { paymentMethod, paymentReference } = req.body;
 
-    const invoice = await Invoice.findById(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id);
 
     if (!invoice) {
       res.status(404).json({
@@ -257,7 +263,7 @@ export const markInvoiceAsPaid = async (req: AuthRequest, res: Response): Promis
 // @access  Private (Admin)
 export const deleteInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const invoice = await Invoice.findByIdAndDelete(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id);
 
     if (!invoice) {
       res.status(404).json({
@@ -266,6 +272,8 @@ export const deleteInvoice = async (req: AuthRequest, res: Response): Promise<vo
       });
       return;
     }
+
+    await invoice.destroy();
 
     res.status(200).json({
       success: true,
@@ -282,34 +290,44 @@ export const deleteInvoice = async (req: AuthRequest, res: Response): Promise<vo
 // @desc    Get financial summary
 // @route   GET /api/v1/invoices/stats/summary
 // @access  Private
-export const getFinancialSummary = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getFinancialSummary = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const totalRevenue = await Invoice.aggregate([
-      { $group: { _id: null, total: { $sum: '$total' } } },
-    ]);
+    const { fn, col } = require('sequelize');
+    
+    // Total revenue
+    const totalRevenueResult = await Invoice.findOne({
+      attributes: [[fn('SUM', col('total')), 'total']],
+      raw: true,
+    });
 
-    const paid = await Invoice.aggregate([
-      { $match: { status: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$total' } } },
-    ]);
+    // Paid invoices
+    const paidResult = await Invoice.findOne({
+      where: { status: 'paid' },
+      attributes: [[fn('SUM', col('total')), 'total']],
+      raw: true,
+    });
 
-    const pending = await Invoice.aggregate([
-      { $match: { status: { $in: ['sent', 'draft'] } } },
-      { $group: { _id: null, total: { $sum: '$total' } } },
-    ]);
+    // Pending invoices (sent or draft)
+    const pendingResult = await Invoice.findOne({
+      where: { status: { [Op.in]: ['sent', 'draft'] } },
+      attributes: [[fn('SUM', col('total')), 'total']],
+      raw: true,
+    });
 
-    const overdue = await Invoice.aggregate([
-      { $match: { status: 'overdue' } },
-      { $group: { _id: null, total: { $sum: '$total' } } },
-    ]);
+    // Overdue invoices
+    const overdueResult = await Invoice.findOne({
+      where: { status: 'overdue' },
+      attributes: [[fn('SUM', col('total')), 'total']],
+      raw: true,
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        totalRevenue: totalRevenue[0]?.total || 0,
-        collected: paid[0]?.total || 0,
-        pending: pending[0]?.total || 0,
-        overdue: overdue[0]?.total || 0,
+        totalRevenue: (totalRevenueResult as any)?.total || 0,
+        collected: (paidResult as any)?.total || 0,
+        pending: (pendingResult as any)?.total || 0,
+        overdue: (overdueResult as any)?.total || 0,
       },
     });
   } catch (error: any) {

@@ -1,6 +1,6 @@
 # 🥛 Dairy Management System - Backend API
 
-Complete Node.js/Express backend API for the Dairy Management System with MongoDB database, TypeScript, JWT authentication, and comprehensive business logic.
+Complete Node.js/Express backend API for the Dairy Management System with **MySQL database**, TypeScript, Sequelize ORM, JWT authentication, and comprehensive business logic.
 
 ## 📋 Table of Contents
 
@@ -74,7 +74,8 @@ Complete Node.js/Express backend API for the Dairy Management System with MongoD
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js
 - **Language:** TypeScript
-- **Database:** MongoDB with Mongoose ODM
+- **Database:** MySQL 8.0 with Sequelize ORM
+- **ORM:** Sequelize-TypeScript
 - **Authentication:** JWT (jsonwebtoken)
 - **Security:** Helmet, CORS, bcryptjs
 - **Validation:** Express-validator
@@ -88,9 +89,9 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js** (version 18 or higher)
 - **npm** or **yarn**
-- **MongoDB** (version 5 or higher)
+- **MySQL** (version 8.0 or higher)
   - Local installation OR
-  - MongoDB Atlas account (cloud database)
+  - Cloud MySQL instance (AWS RDS, Google Cloud SQL, etc.)
 
 ## 🚀 Installation
 
@@ -118,8 +119,12 @@ Before you begin, ensure you have the following installed:
    PORT=5000
    API_VERSION=v1
 
-   # Database
-   MONGODB_URI=mongodb://localhost:27017/dairy-management
+   # Database (MySQL)
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_NAME=dairy_management
+   DB_USER=root
+   DB_PASSWORD=your-mysql-password
 
    # JWT
    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -138,39 +143,102 @@ Before you begin, ensure you have the following installed:
 | `NODE_ENV` | Environment mode | `development` |
 | `PORT` | Server port | `5000` |
 | `API_VERSION` | API version prefix | `v1` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/dairy-management` |
+| `DB_HOST` | MySQL host | `localhost` |
+| `DB_PORT` | MySQL port | `3306` |
+| `DB_NAME` | Database name | `dairy_management` |
+| `DB_USER` | Database user | `root` |
+| `DB_PASSWORD` | Database password | **Required** |
 | `JWT_SECRET` | Secret key for JWT signing | **Required** |
 | `JWT_EXPIRE` | JWT expiration time | `7d` |
 | `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` |
 
-### MongoDB Setup
+### MySQL Setup with XAMPP
 
-#### Option 1: Local MongoDB
+#### Installation XAMPP
 
-1. Install MongoDB Community Edition
-2. Start MongoDB service:
+1. **Télécharger XAMPP:**
+   - Windows/Linux/macOS: https://www.apachefriends.org/download.html
+   - Choisir la version avec PHP 8.0+ et MySQL
+
+2. **Installer XAMPP:**
+   - Windows: Exécuter le fichier .exe
+   - Linux: `sudo chmod +x xampp-installer.run && sudo ./xampp-installer.run`
+   - macOS: Ouvrir le fichier .dmg
+
+3. **Démarrer MySQL:**
+   - Ouvrir XAMPP Control Panel
+   - Cliquer sur "Start" pour MySQL
+   - MySQL sera disponible sur `localhost:3306`
+
+4. **Créer la base de données:**
+   
+   **Option A - Via phpMyAdmin:**
+   - Ouvrir http://localhost/phpmyadmin
+   - Cliquer sur "Nouvelle base de données"
+   - Nom: `dairy_management`
+   - Interclassement: `utf8mb4_general_ci`
+   - Cliquer "Créer"
+
+   **Option B - Via ligne de commande:**
    ```bash
+   # Windows (depuis le dossier XAMPP)
+   cd C:\xampp
+   mysql\bin\mysql -u root -p
+   
    # Linux/macOS
-   sudo systemctl start mongod
-
-   # macOS with Homebrew
-   brew services start mongodb-community
-
-   # Windows
-   net start MongoDB
+   /opt/lampp/bin/mysql -u root -p
+   
+   # Puis dans MySQL:
+   CREATE DATABASE dairy_management CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+   EXIT;
    ```
 
-#### Option 2: MongoDB Atlas (Cloud)
+5. **Configuration par défaut XAMPP:**
+   - Host: `localhost`
+   - Port: `3306`
+   - User: `root`
+   - Password: `` (vide par défaut)
+   - Database: `dairy_management`
 
-1. Create account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster
-3. Get connection string and update `MONGODB_URI` in `.env`
+#### Option Alternative: MySQL Standalone
+
+Si vous ne voulez pas XAMPP, vous pouvez installer MySQL seul:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install mysql-server
+sudo systemctl start mysql
+```
+
+**macOS:**
+```bash
+brew install mysql
+brew services start mysql
+```
+
+**Windows:**
+Télécharger depuis https://dev.mysql.com/downloads/mysql/
+
+Puis créer la base de données:
+```bash
+mysql -u root -p
+CREATE DATABASE dairy_management;
+EXIT;
+```
 
 ## 🏃 Running the Application
 
 ### Development Mode
 
 ```bash
+# Initialize database (creates tables)
+npm run db:init
+
+# Seed database with sample data
+npm run db:seed
+
+# Start development server
 npm run dev
 ```
 
@@ -186,12 +254,17 @@ npm run build
 npm start
 ```
 
-### Seed Database
-
-Populate the database with sample data:
+### Database Commands
 
 ```bash
-npm run seed
+# Initialize database (creates all tables)
+npm run db:init
+
+# Seed database with sample data
+npm run db:seed
+
+# Reset database (drop and recreate)
+npm run db:reset
 ```
 
 **Test Users Created:**

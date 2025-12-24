@@ -1,10 +1,25 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { StatCard } from '../../components/UI/Card'
-import { Milk, Truck, DollarSign, AlertTriangle, Clock } from 'lucide-react'
+import { Milk, Truck, DollarSign, AlertTriangle, Clock, Loader2 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import api from '../../services/api'
+
+interface DashboardStats {
+  todayProduction?: number
+  pendingOrders?: number
+  criticalStock?: number
+  monthlyRevenue?: number
+  productionTrend?: number
+  ordersTrend?: number
+  revenueTrend?: number
+}
 
 const Dashboard: React.FC = () => {
-  // Mock data for charts
+  const [stats, setStats] = useState<DashboardStats>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Mock data for charts (will be replaced with API data later)
   const productionData = [
     { day: 'Mon', milk: 4500, yogurt: 2000, cheese: 800 },
     { day: 'Tue', milk: 4800, yogurt: 2200, cheese: 850 },
@@ -47,6 +62,51 @@ const Dashboard: React.FC = () => {
     medium: 'border-l-4 border-info bg-blue-50 dark:bg-blue-900/20',
   }
 
+  // Fetch dashboard statistics from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await api.dashboard.getStats()
+        
+        if (response.success && response.data) {
+          setStats(response.data)
+        } else {
+          throw new Error('Failed to fetch dashboard statistics')
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch dashboard stats:', err)
+        setError(err?.message || 'Failed to load dashboard data')
+        // Keep empty stats object to show zeros
+        setStats({})
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-primary-600" size={40} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="text-red-600 dark:text-red-400" size={20} />
+          <span className="text-red-800 dark:text-red-200">{error}</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Title */}
@@ -59,28 +119,28 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Today's Production"
-          value="5,240 L"
-          trend={8.2}
+          value={stats.todayProduction ? `${stats.todayProduction.toLocaleString()} L` : '0 L'}
+          trend={stats.productionTrend}
           icon={<Milk size={24} />}
           color="blue"
         />
         <StatCard
           title="Pending Orders"
-          value="23"
-          trend={-5.1}
+          value={stats.pendingOrders?.toString() || '0'}
+          trend={stats.ordersTrend}
           icon={<Truck size={24} />}
           color="green"
         />
         <StatCard
           title="Critical Stock Alerts"
-          value="7"
+          value={stats.criticalStock?.toString() || '0'}
           icon={<AlertTriangle size={24} />}
           color="red"
         />
         <StatCard
           title="Monthly Revenue"
-          value="€45,230"
-          trend={12.5}
+          value={stats.monthlyRevenue ? `€${stats.monthlyRevenue.toLocaleString()}` : '€0'}
+          trend={stats.revenueTrend}
           icon={<DollarSign size={24} />}
           color="green"
         />

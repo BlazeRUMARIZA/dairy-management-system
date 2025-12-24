@@ -2,16 +2,58 @@
 
 A comprehensive, modern full-stack web application for managing dairy business operations including production tracking, inventory management, order processing, client relations, invoicing, and analytics.
 
-![React](https://img.shields.io/badge/React-18.2.0-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue) ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.3.6-cyan) ![Node.js](https://img.shields.io/badge/Node.js-18+-green) ![Express](https://img.shields.io/badge/Express-4.18-lightgrey) ![MongoDB](https://img.shields.io/badge/MongoDB-7.0-brightgreen)
+![React](https://img.shields.io/badge/React-18.2.0-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue) ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.3.6-cyan) ![Node.js](https://img.shields.io/badge/Node.js-18+-green) ![Express](https://img.shields.io/badge/Express-4.18-lightgrey) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)
 
 ## 📦 Project Structure
 
 This project consists of two main parts:
 
 - **Frontend** - React + TypeScript + Vite + Tailwind CSS (in root directory)
-- **Backend** - Node.js + Express + MongoDB + TypeScript (in `backend/` directory)
+- **Backend** - Node.js + Express + MySQL + Sequelize + TypeScript (in `backend/` directory)
 
 Both are fully integrated and production-ready!
+
+## 🚀 Quick Start
+
+### **[📘 Guide de Démarrage Rapide (Français)](DEMARRAGE_RAPIDE.md)**
+Pour démarrer rapidement avec XAMPP, suivez le guide complet en français!
+
+### Prérequis
+- Node.js 18+
+- XAMPP (pour MySQL)
+- npm ou yarn
+
+### Installation Rapide
+```bash
+# 1. Installer les dépendances backend
+cd backend
+npm install
+
+# 2. Démarrer XAMPP MySQL (via Control Panel)
+
+# 3. Créer la base de données via phpMyAdmin
+# http://localhost/phpmyadmin → Créer base "dairy_management"
+
+# 4. Configurer l'environnement
+cp .env.example .env
+
+# 5. Initialiser la base de données
+npm run db:init
+npm run db:seed
+
+# 6. Démarrer le backend
+npm run dev
+
+# 7. Dans un nouveau terminal, démarrer le frontend
+cd ..
+npm install
+npm run dev
+```
+
+🎉 **Application disponible sur http://localhost:5173**  
+🔑 **Connexion:** admin@dairy.com / password123
+
+---
 
 ## 🌟 Features
 

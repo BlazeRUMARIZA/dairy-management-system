@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/Layout/Layout'
 import Login from './pages/Auth/Login'
 import PasswordRecovery from './pages/Auth/PasswordRecovery'
+import ResetPassword from './pages/Auth/ResetPassword'
 import Dashboard from './pages/Dashboard/Dashboard'
 import Production from './pages/Production/Production'
 import Inventory from './pages/Inventory/Inventory'
@@ -22,6 +23,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/password-recovery" element={<PasswordRecovery />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />

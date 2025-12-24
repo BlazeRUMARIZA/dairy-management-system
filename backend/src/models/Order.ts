@@ -1,193 +1,206 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasOne,
+} from 'sequelize-typescript';
+import Client from './Client';
+import { User } from './User';
+import Invoice from './Invoice';
 
-interface IOrderItem {
-  productId: mongoose.Types.ObjectId;
-  productName: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  total: number;
-}
+@Table({
+  tableName: 'orders',
+  timestamps: true,
+})
+export default class Order extends Model {
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  orderNumber!: string;
 
-interface IDeliveryAddress {
-  street: string;
-  city: string;
-  zipCode: string;
-  country: string;
-}
+  @ForeignKey(() => Client)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  clientId!: number;
 
-interface ITrackingEvent {
-  status: string;
-  timestamp: Date;
-  note?: string;
-  location?: string;
-  updatedBy?: mongoose.Types.ObjectId;
-}
+  @BelongsTo(() => Client)
+  client!: Client;
 
-interface ITracking {
-  status: string;
-  events: ITrackingEvent[];
-}
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  clientName!: string;
 
-export interface IOrder extends Document {
-  orderNumber: string;
-  clientId: mongoose.Types.ObjectId;
-  clientName: string;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in-transit' | 'delivered' | 'cancelled';
-  items: IOrderItem[];
-  subtotal: number;
-  tax: number;
+  @Column({
+    type: DataType.ENUM('pending', 'confirmed', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'pending',
+  })
+  status!: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in-transit' | 'delivered' | 'cancelled';
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+  })
+  items!: Array<{
+    productId: number;
+    productName: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    total: number;
+  }>;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  subtotal!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  tax!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
   discount?: number;
-  total: number;
-  deliveryAddress: IDeliveryAddress;
-  deliveryDate: Date;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+  })
+  total!: number;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+  })
+  deliveryAddress!: {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+  };
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  deliveryDate!: Date;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   deliveryTime?: string;
-  driverId?: mongoose.Types.ObjectId;
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  driverId?: number;
+
+  @BelongsTo(() => User, 'driverId')
+  driver?: User;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   driverName?: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
   specialInstructions?: string;
-  tracking: ITracking;
-  paymentStatus: 'pending' | 'paid' | 'partial' | 'overdue';
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+    defaultValue: {
+      status: 'pending',
+      events: []
+    },
+  })
+  tracking!: {
+    status: string;
+    events: Array<{
+      status: string;
+      timestamp: Date;
+      note?: string;
+      location?: string;
+      updatedBy?: number;
+    }>;
+  };
+
+  @Column({
+    type: DataType.ENUM('pending', 'paid', 'partial', 'overdue'),
+    allowNull: false,
+    defaultValue: 'pending',
+  })
+  paymentStatus!: 'pending' | 'paid' | 'partial' | 'overdue';
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   paymentMethod?: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
   notes?: string;
-  createdBy: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  createdBy!: number;
+
+  @BelongsTo(() => User, 'createdBy')
+  creator!: User;
+
+  @HasOne(() => Invoice)
+  invoice!: Invoice;
+
+  // Initialize hooks
+  static initHooks() {
+    this.addHook('beforeCreate', async (instance: Order) => {
+      if (!instance.orderNumber) {
+        const year = new Date().getFullYear();
+        const count = await Order.count();
+        instance.orderNumber = `ORD-${year}-${String(count + 1).padStart(4, '0')}`;
+      }
+    });
+  }
 }
-
-const orderSchema = new Schema<IOrder>(
-  {
-    orderNumber: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    clientId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Client',
-      required: [true, 'Client is required'],
-    },
-    clientName: {
-      type: String,
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'confirmed', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'],
-      default: 'pending',
-    },
-    items: [{
-      productId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Product',
-        required: true,
-      },
-      productName: {
-        type: String,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      unit: {
-        type: String,
-        required: true,
-      },
-      unitPrice: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      total: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-    }],
-    subtotal: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    tax: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
-    },
-    discount: {
-      type: Number,
-      min: 0,
-      default: 0,
-    },
-    total: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    deliveryAddress: {
-      street: { type: String, required: true },
-      city: { type: String, required: true },
-      zipCode: { type: String, required: true },
-      country: { type: String, required: true },
-    },
-    deliveryDate: {
-      type: Date,
-      required: true,
-    },
-    deliveryTime: String,
-    driverId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    driverName: String,
-    specialInstructions: String,
-    tracking: {
-      status: {
-        type: String,
-        default: 'pending',
-      },
-      events: [{
-        status: String,
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-        note: String,
-        location: String,
-        updatedBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      }],
-    },
-    paymentStatus: {
-      type: String,
-      enum: ['pending', 'paid', 'partial', 'overdue'],
-      default: 'pending',
-    },
-    paymentMethod: String,
-    notes: String,
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Generate order number
-orderSchema.pre('save', async function (next) {
-  if (!this.orderNumber) {
-    const year = new Date().getFullYear();
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderNumber = `ORD-${year}-${String(count + 1).padStart(4, '0')}`;
-  }
-  next();
-});
-
-export default mongoose.model<IOrder>('Order', orderSchema);

@@ -1,8 +1,11 @@
 import { Response } from 'express';
+import { Op } from 'sequelize';
 import Order from '../models/Order';
 import Client from '../models/Client';
 import Product from '../models/Product';
+import { User } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import emailService from '../services/emailService';
 
 // @desc    Get all orders
 // @route   GET /api/v1/orders
@@ -11,31 +14,35 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
   try {
     const { status, clientId, startDate, endDate } = req.query;
     
-    let query: any = {};
+    const where: any = {};
     
     if (status) {
-      query.status = status;
+      where.status = status;
     }
     
     if (clientId) {
-      query.clientId = clientId;
+      where.clientId = clientId;
     }
     
     if (startDate || endDate) {
-      query.deliveryDate = {};
+      where.deliveryDate = {};
       if (startDate) {
-        query.deliveryDate.$gte = new Date(startDate as string);
+        where.deliveryDate[Op.gte] = new Date(startDate as string);
       }
       if (endDate) {
-        query.deliveryDate.$lte = new Date(endDate as string);
+        where.deliveryDate[Op.lte] = new Date(endDate as string);
       }
     }
 
-    const orders = await Order.find(query)
-      .populate('clientId', 'name type')
-      .populate('items.productId', 'name')
-      .populate('driverId', 'name')
-      .sort({ createdAt: -1 });
+    const orders = await Order.findAll({
+      where,
+      include: [
+        { model: Client, as: 'client', attributes: ['name', 'type'] },
+        { model: User, as: 'driver', attributes: ['name'] },
+        { model: User, as: 'creator', attributes: ['name'] }
+      ],
+      order: [['createdAt', 'DESC']],
+    });
 
     res.status(200).json({
       success: true,
@@ -55,11 +62,13 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
 // @access  Private
 export const getOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate('clientId')
-      .populate('items.productId')
-      .populate('driverId')
-      .populate('tracking.events.updatedBy', 'name');
+    const order = await Order.findByPk(req.params.id, {
+      include: [
+        { model: Client, as: 'client' },
+        { model: User, as: 'driver', attributes: ['name'] },
+        { model: User, as: 'creator', attributes: ['name'] }
+      ],
+    });
 
     if (!order) {
       res.status(404).json({
@@ -89,7 +98,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const { clientId, items, deliveryAddress, deliveryDate, deliveryTime, specialInstructions } = req.body;
 
     // Verify client exists
-    const client = await Client.findById(clientId);
+    const client = await Client.findByPk(clientId);
     if (!client) {
       res.status(404).json({
         success: false,
@@ -103,7 +112,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const orderItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await Product.findByPk(item.productId);
       
       if (!product) {
         res.status(404).json({
@@ -125,7 +134,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       subtotal += itemTotal;
 
       orderItems.push({
-        productId: product._id,
+        productId: product.id,
         productName: product.name,
         quantity: item.quantity,
         unit: product.unit,
@@ -150,30 +159,45 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       deliveryDate,
       deliveryTime,
       specialInstructions,
-      createdBy: req.user?._id,
+      createdBy: req.user?.id,
       tracking: {
         status: 'pending',
         events: [{
           status: 'pending',
           timestamp: new Date(),
           note: 'Order created',
-          updatedBy: req.user?._id,
+          updatedBy: req.user?.id,
         }],
       },
     });
 
     // Update product stocks
     for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { currentStock: -item.quantity },
-      });
+      const product = await Product.findByPk(item.productId);
+      if (product) {
+        product.currentStock -= item.quantity;
+        await product.save();
+      }
     }
 
     // Update client stats
-    await Client.findByIdAndUpdate(clientId, {
-      $inc: { totalOrders: 1, totalRevenue: total },
-      lastOrderDate: new Date(),
-    });
+    if (client.totalOrders !== undefined) {
+      client.totalOrders += 1;
+    }
+    if (client.totalRevenue !== undefined) {
+      client.totalRevenue += total;
+    }
+    client.lastOrderDate = new Date();
+    await client.save();
+
+    // Send order confirmation email
+    if (client.email) {
+      await emailService.sendOrderConfirmationEmail(
+        order,
+        client.email,
+        client.name
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -192,14 +216,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 // @access  Private (Admin, Manager)
 export const updateOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const order = await Order.findByPk(req.params.id);
 
     if (!order) {
       res.status(404).json({
@@ -208,6 +225,8 @@ export const updateOrder = async (req: AuthRequest, res: Response): Promise<void
       });
       return;
     }
+
+    await order.update(req.body);
 
     res.status(200).json({
       success: true,
@@ -228,7 +247,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
   try {
     const { status, note, location } = req.body;
 
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findByPk(req.params.id);
 
     if (!order) {
       res.status(404).json({
@@ -238,15 +257,27 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    order.status = status;
-    order.tracking.status = status;
-    order.tracking.events.push({
+    // Parse tracking if it's a JSON string
+    const tracking = typeof order.tracking === 'string' 
+      ? JSON.parse(order.tracking) 
+      : order.tracking;
+    
+    // Update tracking object
+    tracking.status = status;
+    if (!Array.isArray(tracking.events)) {
+      tracking.events = [];
+    }
+    tracking.events.push({
       status,
       timestamp: new Date(),
       note,
       location,
-      updatedBy: req.user?._id,
+      updatedBy: req.user?.id,
     });
+
+    // Update order
+    order.status = status;
+    order.tracking = tracking;
 
     await order.save();
 
@@ -269,11 +300,7 @@ export const assignDriver = async (req: AuthRequest, res: Response): Promise<voi
   try {
     const { driverId, driverName } = req.body;
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { driverId, driverName },
-      { new: true }
-    );
+    const order = await Order.findByPk(req.params.id);
 
     if (!order) {
       res.status(404).json({
@@ -282,6 +309,10 @@ export const assignDriver = async (req: AuthRequest, res: Response): Promise<voi
       });
       return;
     }
+
+    order.driverId = driverId;
+    order.driverName = driverName;
+    await order.save();
 
     res.status(200).json({
       success: true,
@@ -300,7 +331,7 @@ export const assignDriver = async (req: AuthRequest, res: Response): Promise<voi
 // @access  Private (Admin, Manager)
 export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findByPk(req.params.id);
 
     if (!order) {
       res.status(404).json({
@@ -318,22 +349,37 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    order.status = 'cancelled';
-    order.tracking.status = 'cancelled';
-    order.tracking.events.push({
+    // Parse tracking if it's a JSON string
+    const tracking = typeof order.tracking === 'string' 
+      ? JSON.parse(order.tracking) 
+      : order.tracking;
+    
+    // Update tracking object
+    tracking.status = 'cancelled';
+    if (!Array.isArray(tracking.events)) {
+      tracking.events = [];
+    }
+    tracking.events.push({
       status: 'cancelled',
       timestamp: new Date(),
       note: req.body.reason || 'Order cancelled',
-      updatedBy: req.user?._id,
+      updatedBy: req.user?.id,
     });
+
+    // Update order
+    order.status = 'cancelled';
+    order.tracking = tracking;
 
     await order.save();
 
     // Restore product stocks
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { currentStock: item.quantity },
-      });
+    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    for (const item of items) {
+      const product = await Product.findByPk(item.productId);
+      if (product) {
+        product.currentStock += item.quantity;
+        await product.save();
+      }
     }
 
     res.status(200).json({

@@ -4,11 +4,13 @@ import { Button } from '../../components/UI/Button'
 import { Select } from '../../components/UI/Input'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Download, TrendingUp, Package, Users, DollarSign } from 'lucide-react'
-import { reportService } from '../../services/dataService'
+import api from '../../services/api'
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns'
 
 const Reports: React.FC = () => {
   const [timeRange, setTimeRange] = useState('month')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [productionReport, setProductionReport] = useState<any>(null)
   const [salesReport, setSalesReport] = useState<any>(null)
   const [clientReport, setClientReport] = useState<any>(null)
@@ -18,32 +20,159 @@ const Reports: React.FC = () => {
     loadReports()
   }, [timeRange])
 
-  const loadReports = () => {
-    const now = new Date()
-    let startDate: Date, endDate: Date
+  const loadReports = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const now = new Date()
+      let startDate: Date, endDate: Date
 
-    switch (timeRange) {
-      case 'month':
-        startDate = startOfMonth(now)
-        endDate = endOfMonth(now)
-        break
-      case 'quarter':
-        startDate = startOfMonth(subMonths(now, 3))
-        endDate = endOfMonth(now)
-        break
-      case 'year':
-        startDate = startOfYear(now)
-        endDate = endOfYear(now)
-        break
-      default:
-        startDate = startOfMonth(now)
-        endDate = endOfMonth(now)
+      switch (timeRange) {
+        case 'month':
+          startDate = startOfMonth(now)
+          endDate = endOfMonth(now)
+          break
+        case 'quarter':
+          startDate = startOfMonth(subMonths(now, 3))
+          endDate = endOfMonth(now)
+          break
+        case 'year':
+          startDate = startOfYear(now)
+          endDate = endOfYear(now)
+          break
+        default:
+          startDate = startOfMonth(now)
+          endDate = endOfMonth(now)
+      }
+
+      // Load all data in parallel
+      const [batchesRes, ordersRes, clientsRes, productsRes] = await Promise.all([
+        api.batches.getAll({ startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
+        api.orders.getAll({ startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
+        api.clients.getAll(),
+        api.products.getAll()
+      ])
+
+      // Process production report
+      const batches = batchesRes.data || []
+      const productionByType = batches.reduce((acc: any, batch: any) => {
+        const type = batch.productType || 'other'
+        if (!acc[type]) acc[type] = 0
+        acc[type] += batch.quantity || 0
+        return acc
+      }, {})
+      
+      setProductionReport({
+        totalBatches: batches.length,
+        totalQuantity: batches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0),
+        byType: Object.entries(productionByType).map(([name, value]) => ({ name, value })),
+        byProductType: Object.entries(productionByType).map(([productType, quantity]) => ({ productType, quantity })),
+        completedBatches: batches.filter((b: any) => b.status === 'completed').length,
+        averageYield: batches.reduce((sum: number, b: any) => sum + (b.yield || 0), 0) / (batches.length || 1)
+      })
+
+      // Process sales report
+      const orders = ordersRes.data || []
+      
+      // Group orders by status
+      const ordersByStatus = orders.reduce((acc: any, order: any) => {
+        const status = order.status || 'pending'
+        if (!acc[status]) {
+          acc[status] = { count: 0, revenue: 0 }
+        }
+        acc[status].count++
+        acc[status].revenue += Number(order.total || 0)
+        return acc
+      }, {})
+      
+      // Group orders by product (from order items)
+      const ordersByProduct = orders.reduce((acc: any, order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const productName = item.productName || 'Unknown'
+            if (!acc[productName]) {
+              acc[productName] = { revenue: 0, quantity: 0 }
+            }
+            acc[productName].revenue += Number(item.total || 0)
+            acc[productName].quantity += Number(item.quantity || 0)
+          })
+        }
+        return acc
+      }, {})
+      
+      setSalesReport({
+        totalOrders: orders.length,
+        totalRevenue: orders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0),
+        averageOrderValue: orders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0) / (orders.length || 1),
+        deliveredOrders: orders.filter((o: any) => o.status === 'delivered').length,
+        byStatus: Object.entries(ordersByStatus).map(([status, data]: [string, any]) => ({
+          status,
+          count: data.count,
+          revenue: data.revenue
+        })),
+        byProduct: Object.entries(ordersByProduct).map(([productName, data]: [string, any]) => ({
+          productName,
+          revenue: data.revenue,
+          quantity: data.quantity
+        }))
+      })
+
+      // Process client report
+      const clients = clientsRes.data || []
+      const clientsByType = clients.reduce((acc: any, client: any) => {
+        const type = client.type || 'other'
+        if (!acc[type]) acc[type] = 0
+        acc[type]++
+        return acc
+      }, {})
+      
+      // Calculate client stats from orders
+      const clientStats = clients.map((client: any) => {
+        const clientOrders = orders.filter((o: any) => o.clientId === client.id)
+        const totalRevenue = clientOrders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0)
+        return {
+          id: client.id,
+          name: client.name,
+          type: client.type,
+          totalOrders: clientOrders.length,
+          totalRevenue: totalRevenue,
+          monthlyRevenue: totalRevenue / 12, // Approximate
+          rating: Math.random() * 2 + 3 // Mock rating 3-5
+        }
+      }).sort((a: any, b: any) => b.totalRevenue - a.totalRevenue).slice(0, 10)
+      
+      setClientReport({
+        totalClients: clients.length,
+        byType: Object.entries(clientsByType).map(([name, value]) => ({ name, value })),
+        activeClients: clients.filter((c: any) => c.status === 'active').length,
+        topClients: clientStats
+      })
+
+      // Process inventory report
+      const products = productsRes.data || []
+      const lowStockItems = products.filter((p: any) => Number(p.currentStock || 0) <= Number(p.reorderPoint || 0))
+      
+      setInventoryReport({
+        totalProducts: products.length,
+        totalValue: products.reduce((sum: number, p: any) => sum + (Number(p.unitPrice || 0) * Number(p.currentStock || 0)), 0),
+        lowStockCount: lowStockItems.length,
+        outOfStock: products.filter((p: any) => Number(p.currentStock || 0) === 0).length,
+        lowStockItems: lowStockItems.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          currentStock: Number(p.currentStock || 0),
+          reorderPoint: Number(p.reorderPoint || 0),
+          unitPrice: Number(p.unitPrice || 0)
+        }))
+      })
+
+    } catch (err: any) {
+      console.error('Failed to load reports:', err)
+      setError(err.message || 'Failed to load reports')
+    } finally {
+      setLoading(false)
     }
-
-    setProductionReport(reportService.getProductionReport(startDate.toISOString(), endDate.toISOString()))
-    setSalesReport(reportService.getSalesReport(startDate.toISOString(), endDate.toISOString()))
-    setClientReport(reportService.getClientReport())
-    setInventoryReport(reportService.getInventoryReport())
   }
 
   const exportReport = () => {
@@ -69,12 +198,25 @@ const Reports: React.FC = () => {
 
   const COLORS = ['#4A90E2', '#50C878', '#FFC107', '#DC3545', '#9C27B0', '#FF9800']
 
-  if (!productionReport || !salesReport || !clientReport || !inventoryReport) {
+  if (loading || !productionReport || !salesReport || !clientReport || !inventoryReport) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading reports...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400">{error}</p>
+          <Button variant="primary" onClick={loadReports} className="mt-4">
+            Retry
+          </Button>
         </div>
       </div>
     )
@@ -111,7 +253,7 @@ const Reports: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Production</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {productionReport.totalQuantity.toLocaleString()} L
+                {Number(productionReport.totalQuantity || 0).toLocaleString()} L
               </p>
               <p className="text-xs text-success-600 mt-1">
                 {productionReport.completedBatches} batches completed
@@ -126,7 +268,7 @@ const Reports: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                €{salesReport.totalRevenue.toLocaleString()}
+                €{Number(salesReport.totalRevenue || 0).toLocaleString()}
               </p>
               <p className="text-xs text-success-600 mt-1">
                 {salesReport.totalOrders} orders
@@ -156,7 +298,7 @@ const Reports: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Avg Order Value</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                €{salesReport.averageOrderValue.toFixed(0)}
+                €{Number(salesReport.averageOrderValue || 0).toFixed(0)}
               </p>
               <p className="text-xs text-warning-600 mt-1">
                 Per transaction
@@ -223,7 +365,7 @@ const Reports: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Average Yield</span>
                   <span className="text-xl font-bold text-primary-600">
-                    {productionReport.averageYield.toFixed(1)}%
+                    {Number(productionReport.averageYield || 0).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -268,7 +410,7 @@ const Reports: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold">{status.count} orders</p>
-                    <p className="text-sm text-gray-600">€{status.revenue.toLocaleString()}</p>
+                    <p className="text-sm text-gray-600">€{Number(status.revenue || 0).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -301,10 +443,10 @@ const Reports: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{client.totalOrders}</td>
                   <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                    €{client.totalRevenue.toLocaleString()}
+                    €{Number(client.totalRevenue || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    €{client.monthlyRevenue.toLocaleString()}
+                    €{Number(client.monthlyRevenue || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -334,7 +476,7 @@ const Reports: React.FC = () => {
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Stock Value</p>
             <p className="text-3xl font-bold text-green-600">
-              €{inventoryReport.totalValue.toLocaleString()}
+              €{Number(inventoryReport.totalValue || 0).toLocaleString()}
             </p>
           </div>
         </div>

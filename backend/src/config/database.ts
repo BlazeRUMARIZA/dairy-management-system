@@ -1,30 +1,65 @@
-import mongoose from 'mongoose';
+import { Sequelize } from 'sequelize-typescript';
+import 'reflect-metadata';
+import { User } from '../models/User';
+import Product from '../models/Product';
+import Client from '../models/Client';
+import Order from '../models/Order';
+import Batch from '../models/Batch';
+import Invoice from '../models/Invoice';
+
+const sequelize = new Sequelize({
+  database: process.env.DB_NAME || 'dairy_management',
+  dialect: 'mysql',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  username: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  define: {
+    timestamps: true,
+    underscored: false,
+    freezeTableName: false
+  }
+});
+
+// Add models to sequelize instance
+sequelize.addModels([User, Product, Client, Order, Batch, Invoice]);
+
+// Initialize model hooks (for password hashing, etc.)
+User.initHooks();
+Product.initHooks();
+Order.initHooks();
+Batch.initHooks();
+Invoice.initHooks();
 
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/dairy-management';
+    await sequelize.authenticate();
+    console.log(`✅ MySQL Connected: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '3306'}`);
     
-    const conn = await mongoose.connect(mongoUri);
-
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.log('⚠️  MongoDB disconnected');
-    });
+    // Sync models in development (create tables if they don't exist)
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: false });
+      console.log('✅ Database models synchronized');
+    }
 
     process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed due to app termination');
+      await sequelize.close();
+      console.log('MySQL connection closed due to app termination');
       process.exit(0);
     });
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error);
+    console.error('❌ Error connecting to MySQL:', error);
     process.exit(1);
   }
 };
 
 export default connectDB;
+export { sequelize };
+

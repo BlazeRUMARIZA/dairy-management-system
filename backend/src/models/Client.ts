@@ -1,137 +1,176 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  HasMany,
+  Index,
+} from 'sequelize-typescript';
+import Order from './Order';
+import Invoice from './Invoice';
 
-interface IContact {
-  name: string;
-  position?: string;
-  email?: string;
-  phone?: string;
-}
+@Table({
+  tableName: 'clients',
+  timestamps: true,
+  indexes: [
+    {
+      type: 'FULLTEXT',
+      fields: ['name', 'email']
+    }
+  ]
+})
+export default class Client extends Model {
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  @Index
+  name!: string;
 
-interface IAddress {
-  street: string;
-  city: string;
-  zipCode: string;
-  country: string;
-}
+  @Column({
+    type: DataType.ENUM('Restaurant', 'Grocery', 'Hotel', 'Cafe', 'Retail', 'Wholesaler', 'Other'),
+    allowNull: false,
+  })
+  type!: 'Restaurant' | 'Grocery' | 'Hotel' | 'Cafe' | 'Retail' | 'Wholesaler' | 'Other';
 
-interface IPreferences {
-  deliveryDays?: string[];
-  paymentTerms?: number;
-  deliveryTime?: string;
-}
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    validate: {
+      isEmail: {
+        msg: 'Please enter a valid email',
+      },
+    },
+  })
+  @Index
+  email!: string;
 
-export interface IClient extends Document {
-  name: string;
-  type: 'Restaurant' | 'Grocery' | 'Hotel' | 'Cafe' | 'Retail' | 'Wholesaler' | 'Other';
-  email: string;
-  phone: string;
-  address: string;
-  contact?: IContact;
-  billingAddress?: IAddress;
-  deliveryAddress?: IAddress;
-  status: 'active' | 'inactive' | 'suspended';
-  rating?: number;
-  totalOrders: number;
-  totalRevenue: number;
-  monthlyRevenue: number;
-  preferences?: IPreferences;
-  favoriteProducts?: string[];
-  lastOrderDate?: Date;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  phone!: string;
 
-const clientSchema = new Schema<IClient>(
-  {
-    name: {
-      type: String,
-      required: [true, 'Client name is required'],
-      trim: true,
-    },
-    type: {
-      type: String,
-      required: [true, 'Client type is required'],
-      enum: ['Restaurant', 'Grocery', 'Hotel', 'Cafe', 'Retail', 'Wholesaler', 'Other'],
-    },
-    email: {
-      type: String,
-      required: [true, 'Email is required'],
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
-    },
-    phone: {
-      type: String,
-      required: [true, 'Phone is required'],
-      trim: true,
-    },
-    address: {
-      type: String,
-      required: [true, 'Address is required'],
-      trim: true,
-    },
-    contact: {
-      name: String,
-      position: String,
-      email: String,
-      phone: String,
-    },
-    billingAddress: {
-      street: String,
-      city: String,
-      zipCode: String,
-      country: String,
-    },
-    deliveryAddress: {
-      street: String,
-      city: String,
-      zipCode: String,
-      country: String,
-    },
-    status: {
-      type: String,
-      enum: ['active', 'inactive', 'suspended'],
-      default: 'active',
-    },
-    rating: {
-      type: Number,
+  @Column({
+    type: DataType.TEXT,
+    allowNull: false,
+  })
+  address!: string;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  contact?: {
+    name: string;
+    position?: string;
+    email?: string;
+    phone?: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  billingAddress?: {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  deliveryAddress?: {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+  };
+
+  @Column({
+    type: DataType.ENUM('active', 'inactive', 'suspended'),
+    allowNull: false,
+    defaultValue: 'active',
+  })
+  status!: 'active' | 'inactive' | 'suspended';
+
+  @Column({
+    type: DataType.DECIMAL(2, 1),
+    allowNull: true,
+    validate: {
       min: 0,
       max: 5,
     },
-    totalOrders: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    totalRevenue: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    monthlyRevenue: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    preferences: {
-      deliveryDays: [String],
-      paymentTerms: Number,
-      deliveryTime: String,
-    },
-    favoriteProducts: [String],
-    lastOrderDate: Date,
-    notes: {
-      type: String,
-      trim: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+  })
+  rating?: number;
 
-// Index for searching
-clientSchema.index({ name: 'text', email: 'text' });
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  totalOrders!: number;
 
-export default mongoose.model<IClient>('Client', clientSchema);
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  totalRevenue!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  monthlyRevenue!: number;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  preferences?: {
+    deliveryDays?: string[];
+    paymentTerms?: number;
+    deliveryTime?: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+    defaultValue: [],
+  })
+  favoriteProducts!: string[];
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  lastOrderDate?: Date;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  notes?: string;
+
+  // Relationships
+  @HasMany(() => Order)
+  orders!: Order[];
+
+  @HasMany(() => Invoice)
+  invoices!: Invoice[];
+}
+

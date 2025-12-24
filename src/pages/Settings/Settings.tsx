@@ -1,25 +1,171 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card } from '../../components/UI/Card'
 import { Button } from '../../components/UI/Button'
 import { Input } from '../../components/UI/Input'
 import { Select } from '../../components/UI/Input'
 import { Badge } from '../../components/UI/Badge'
-import { Users, Package, Settings as SettingsIcon, Save } from 'lucide-react'
+import { Modal } from '../../components/UI/Modal'
+import { Users, Package, Settings as SettingsIcon, Save, Plus, Edit, Trash2, Bell, Clock, MapPin } from 'lucide-react'
+import api from '../../services/api'
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'products' | 'system'>('users')
+  const [users, setUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [userFormData, setUserFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'viewer'
+  })
 
-  const users = [
-    { id: 1, name: 'John Dairy', email: 'john@dairy.com', role: 'Admin', status: 'active' },
-    { id: 2, name: 'Jane Smith', email: 'jane@dairy.com', role: 'Production', status: 'active' },
-    { id: 3, name: 'Bob Wilson', email: 'bob@dairy.com', role: 'Delivery', status: 'inactive' },
-  ]
+  // System settings state
+  const [systemSettings, setSystemSettings] = useState({
+    openingTime: '08:00',
+    closingTime: '18:00',
+    notifications: {
+      orderConfirmations: true,
+      lowStockAlerts: true,
+      expirationWarnings: true,
+      paymentReminders: true,
+      dailyReports: true
+    },
+    product: {
+      vatRate: 20,
+      shelfLife: 7,
+      barcodePrefix: 'DRY',
+      autoGenerateBarcode: true
+    }
+  })
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers()
+    }
+  }, [activeTab])
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      // Currently no endpoint to get all users, using seed data
+      // In production, you'd call: const response = await api.users.getAll()
+      setUsers([
+        { id: 1, name: 'Admin User', email: 'admin@dairy.com', role: 'admin', status: 'active' },
+        { id: 2, name: 'Manager User', email: 'manager@dairy.com', role: 'manager', status: 'active' },
+        { id: 3, name: 'Operator User', email: 'operator@dairy.com', role: 'operator', status: 'active' },
+        { id: 4, name: 'Driver User', email: 'driver@dairy.com', role: 'driver', status: 'active' },
+        { id: 5, name: 'Viewer User', email: 'viewer@dairy.com', role: 'viewer', status: 'inactive' },
+      ])
+    } catch (err) {
+      console.error('Failed to load users:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddUser = () => {
+    setEditMode(false)
+    setUserFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'viewer'
+    })
+    setShowUserModal(true)
+  }
+
+  const handleEditUser = (user: any) => {
+    setEditMode(true)
+    setSelectedUser(user)
+    setUserFormData({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role: user.role
+    })
+    setShowUserModal(true)
+  }
+
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this user?')) return
+    
+    try {
+      // In a real app, call API to delete user
+      setUsers(users.filter(u => u.id !== id))
+      alert('User deleted successfully')
+    } catch (err) {
+      console.error('Failed to delete user:', err)
+      alert('Failed to delete user')
+    }
+  }
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      if (editMode) {
+        // Update user - currently only updates local state
+        // In production, you'd call: await api.users.update(selectedUser.id, userData)
+        setUsers(users.map(u => 
+          u.id === selectedUser.id 
+            ? { ...u, name: userFormData.name, email: userFormData.email, role: userFormData.role }
+            : u
+        ))
+        alert('User updated successfully')
+      } else {
+        // Create new user via API
+        const response = await api.auth.register({
+          name: userFormData.name,
+          email: userFormData.email,
+          password: userFormData.password,
+          role: userFormData.role
+        })
+        
+        if (response.success) {
+          // Add to local list
+          const newUser = {
+            id: response.data?.id || Date.now(),
+            name: userFormData.name,
+            email: userFormData.email,
+            role: userFormData.role,
+            status: 'active'
+          }
+          setUsers([...users, newUser])
+          alert(`User created successfully!\n\nEmail: ${userFormData.email}\nPassword: ${userFormData.password}\n\nThey can now log in with these credentials.`)
+        } else {
+          alert('Failed to create user: ' + (response.message || 'Unknown error'))
+        }
+      }
+      setShowUserModal(false)
+    } catch (err: any) {
+      console.error('Failed to save user:', err)
+      alert('Failed to save user: ' + (err?.message || 'Unknown error'))
+    }
+  }
+
+  const handleSaveSystemSettings = () => {
+    // Save to localStorage for persistence
+    localStorage.setItem('dairySystemSettings', JSON.stringify(systemSettings))
+    alert('System settings saved successfully!')
+  }
+
+  useEffect(() => {
+    // Load settings from localStorage
+    const saved = localStorage.getItem('dairySystemSettings')
+    if (saved) {
+      setSystemSettings(JSON.parse(saved))
+    }
+  }, [])
 
   const roleColors = {
-    Admin: 'danger',
-    Production: 'info',
-    Sales: 'success',
-    Delivery: 'warning',
+    admin: 'danger',
+    manager: 'info',
+    operator: 'success',
+    driver: 'warning',
+    viewer: 'default'
   }
 
   const tabs = [
@@ -61,7 +207,10 @@ const Settings: React.FC = () => {
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Employee Accounts</h3>
-              <Button variant="primary">Add Employee</Button>
+              <Button variant="primary" onClick={handleAddUser}>
+                <Plus size={20} className="mr-2" />
+                Add Employee
+              </Button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -87,8 +236,14 @@ const Settings: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="secondary">Edit</Button>
-                          <Button size="sm" variant="danger">Delete</Button>
+                          <Button size="sm" variant="secondary" onClick={() => handleEditUser(user)}>
+                            <Edit size={16} className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleDeleteUser(user.id)}>
+                            <Trash2 size={16} className="mr-1" />
+                            Delete
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -104,22 +259,29 @@ const Settings: React.FC = () => {
       {activeTab === 'products' && (
         <div className="space-y-6">
           <Card>
-            <h3 className="text-lg font-semibold mb-4">Product Categories</h3>
+            <h3 className="text-lg font-semibold mb-4">Product Configuration</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Category Name" placeholder="e.g., Milk Products" />
-              <Select
-                label="Measurement Unit"
-                options={[
-                  { value: 'liter', label: 'Liter' },
-                  { value: 'kilogram', label: 'Kilogram' },
-                  { value: 'unit', label: 'Unit' },
-                ]}
+              <Input 
+                label="VAT Rate (%)" 
+                type="number" 
+                value={systemSettings.product.vatRate}
+                onChange={(e) => setSystemSettings({
+                  ...systemSettings,
+                  product: { ...systemSettings.product, vatRate: Number(e.target.value) }
+                })}
               />
-              <Input label="VAT Rate (%)" type="number" placeholder="e.g., 20" />
-              <Input label="Default Shelf Life (days)" type="number" placeholder="e.g., 7" />
+              <Input 
+                label="Default Shelf Life (days)" 
+                type="number" 
+                value={systemSettings.product.shelfLife}
+                onChange={(e) => setSystemSettings({
+                  ...systemSettings,
+                  product: { ...systemSettings.product, shelfLife: Number(e.target.value) }
+                })}
+              />
             </div>
             <div className="mt-6">
-              <Button variant="primary">
+              <Button variant="primary" onClick={handleSaveSystemSettings}>
                 <Save size={20} className="mr-2" />
                 Save Configuration
               </Button>
@@ -129,9 +291,26 @@ const Settings: React.FC = () => {
           <Card>
             <h3 className="text-lg font-semibold mb-4">Barcode Settings</h3>
             <div className="space-y-4">
-              <Input label="Barcode Prefix" placeholder="e.g., DRY" />
+              <Input 
+                label="Barcode Prefix" 
+                placeholder="e.g., DRY" 
+                value={systemSettings.product.barcodePrefix}
+                onChange={(e) => setSystemSettings({
+                  ...systemSettings,
+                  product: { ...systemSettings.product, barcodePrefix: e.target.value }
+                })}
+              />
               <div className="flex items-center space-x-2">
-                <input type="checkbox" id="auto-generate" className="rounded" />
+                <input 
+                  type="checkbox" 
+                  id="auto-generate" 
+                  className="rounded" 
+                  checked={systemSettings.product.autoGenerateBarcode}
+                  onChange={(e) => setSystemSettings({
+                    ...systemSettings,
+                    product: { ...systemSettings.product, autoGenerateBarcode: e.target.checked }
+                  })}
+                />
                 <label htmlFor="auto-generate" className="text-sm">Auto-generate barcodes for new products</label>
               </div>
             </div>
@@ -143,51 +322,118 @@ const Settings: React.FC = () => {
       {activeTab === 'system' && (
         <div className="space-y-6">
           <Card>
-            <h3 className="text-lg font-semibold mb-4">Business Hours</h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <Clock size={20} className="text-primary-500" />
+              <h3 className="text-lg font-semibold">Business Hours</h3>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Opening Time" type="time" defaultValue="08:00" />
-              <Input label="Closing Time" type="time" defaultValue="18:00" />
+              <Input 
+                label="Opening Time" 
+                type="time" 
+                value={systemSettings.openingTime}
+                onChange={(e) => setSystemSettings({ ...systemSettings, openingTime: e.target.value })}
+              />
+              <Input 
+                label="Closing Time" 
+                type="time" 
+                value={systemSettings.closingTime}
+                onChange={(e) => setSystemSettings({ ...systemSettings, closingTime: e.target.value })}
+              />
             </div>
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold mb-4">Delivery Zones</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <Input label="Zone Name" placeholder="e.g., Downtown" />
-                <Input label="Base Fee (€)" type="number" placeholder="10" />
-                <Input label="Extra Fee/km (€)" type="number" placeholder="1.5" />
-              </div>
-              <Button variant="secondary">Add Zone</Button>
+            <div className="flex items-center space-x-2 mb-4">
+              <Bell size={20} className="text-primary-500" />
+              <h3 className="text-lg font-semibold">Email Notifications</h3>
             </div>
-          </Card>
-
-          <Card>
-            <h3 className="text-lg font-semibold mb-4">Email Notifications</h3>
             <div className="space-y-3">
               {[
-                'Order confirmations',
-                'Low stock alerts',
-                'Expiration warnings',
-                'Payment reminders',
-                'Daily production reports',
-              ].map((setting, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <span className="text-sm">{setting}</span>
-                  <input type="checkbox" defaultChecked className="rounded" />
+                { key: 'orderConfirmations', label: 'Order confirmations' },
+                { key: 'lowStockAlerts', label: 'Low stock alerts' },
+                { key: 'expirationWarnings', label: 'Expiration warnings' },
+                { key: 'paymentReminders', label: 'Payment reminders' },
+                { key: 'dailyReports', label: 'Daily production reports' },
+              ].map((setting) => (
+                <div key={setting.key} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <span className="text-sm">{setting.label}</span>
+                  <input 
+                    type="checkbox" 
+                    className="rounded" 
+                    checked={systemSettings.notifications[setting.key as keyof typeof systemSettings.notifications]}
+                    onChange={(e) => setSystemSettings({
+                      ...systemSettings,
+                      notifications: {
+                        ...systemSettings.notifications,
+                        [setting.key]: e.target.checked
+                      }
+                    })}
+                  />
                 </div>
               ))}
             </div>
           </Card>
 
           <div className="flex justify-end">
-            <Button variant="primary">
+            <Button variant="primary" onClick={handleSaveSystemSettings}>
               <Save size={20} className="mr-2" />
               Save All Settings
             </Button>
           </div>
         </div>
       )}
+
+      {/* User Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title={editMode ? 'Edit Employee' : 'Add New Employee'}
+      >
+        <form onSubmit={handleUserSubmit} className="space-y-4">
+          <Input
+            label="Full Name"
+            required
+            value={userFormData.name}
+            onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+          />
+          <Input
+            label="Email"
+            type="email"
+            required
+            value={userFormData.email}
+            onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+          />
+          {!editMode && (
+            <Input
+              label="Password"
+              type="password"
+              required
+              value={userFormData.password}
+              onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+            />
+          )}
+          <Select
+            label="Role"
+            value={userFormData.role}
+            onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+            options={[
+              { value: 'admin', label: 'Admin' },
+              { value: 'manager', label: 'Manager' },
+              { value: 'operator', label: 'Operator' },
+              { value: 'driver', label: 'Driver' },
+              { value: 'viewer', label: 'Viewer' },
+            ]}
+          />
+          <div className="flex space-x-3 justify-end">
+            <Button type="button" variant="secondary" onClick={() => setShowUserModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              {editMode ? 'Update Employee' : 'Create Employee'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

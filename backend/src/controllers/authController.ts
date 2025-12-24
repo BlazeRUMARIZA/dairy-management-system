@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
-import User, { IUser } from '../models/User';
+import { Op } from 'sequelize';
+import { User } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import emailService from '../services/emailService';
 
 // Generate JWT Token
-const generateToken = (id: string): string => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
-    expiresIn: process.env.JWT_EXPIRE || '7d',
-  });
+const generateToken = (id: number): string => {
+  const secret = process.env.JWT_SECRET || 'secret';
+  const expiresIn = process.env.JWT_EXPIRE || '7d';
+  return jwt.sign({ id }, secret, { expiresIn } as SignOptions);
 };
 
 // @desc    Register new user
@@ -19,7 +21,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const { name, email, password, role } = req.body;
 
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ where: { email } });
     if (userExists) {
       res.status(400).json({
         success: false,
@@ -37,13 +39,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(201).json({
       success: true,
       token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -73,8 +75,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    // Check for user (password is included by default in Sequelize)
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       res.status(401).json({
@@ -109,13 +111,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     await user.save();
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(200).json({
       success: true,
       token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -156,7 +158,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       res.status(404).json({
@@ -167,7 +169,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Generate reset token
-    const resetToken = crypto.randomBytes(20).toString('hex');
+    const resetToken = crypto.randomBytes(32).toString('hex');
 
     // Hash token and set to resetPasswordToken field
     user.resetPasswordToken = crypto
@@ -175,14 +177,32 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       .update(resetToken)
       .digest('hex');
 
-    // Set expire (10 minutes)
-    user.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000);
+    // Set expire (1 hour)
+    user.resetPasswordExpire = new Date(Date.now() + 60 * 60 * 1000);
 
-    await user.save({ validateBeforeSave: false });
+    await user.save();
 
-    // TODO: Send email with reset token
-    // For now, we'll just return the token in development
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // Send email with reset token
+    const emailSent = await emailService.sendPasswordResetEmail(
+      user.email,
+      user.name,
+      resetToken
+    );
+
+    if (!emailSent) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+
+      res.status(500).json({
+        success: false,
+        message: 'Email could not be sent',
+      });
+      return;
+    }
+
+    // In development, also return the reset URL
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
     res.status(200).json({
       success: true,
@@ -209,8 +229,12 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       .digest('hex');
 
     const user = await User.findOne({
-      resetPasswordToken,
-      resetPasswordExpire: { $gt: Date.now() },
+      where: {
+        resetPasswordToken,
+        resetPasswordExpire: {
+          [Op.gt]: new Date()
+        }
+      }
     });
 
     if (!user) {
@@ -228,7 +252,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     await user.save();
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(200).json({
       success: true,
@@ -251,7 +275,7 @@ export const updatePassword = async (
   res: Response
 ): Promise<void> => {
   try {
-    const user = await User.findById(req.user?._id).select('+password');
+    const user = await User.findByPk(req.user?.id);
 
     if (!user) {
       res.status(404).json({
@@ -275,7 +299,7 @@ export const updatePassword = async (
     user.password = req.body.newPassword;
     await user.save();
 
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(200).json({
       success: true,
