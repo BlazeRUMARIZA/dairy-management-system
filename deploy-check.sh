@@ -116,9 +116,13 @@ else
 fi
 
 # Check for .env files (should not be committed)
-if [ -f ".env" ] || [ -f "backend/.env" ]; then
-    error ".env files found in repository - these should NOT be committed!"
-    echo "  Run: git rm --cached .env backend/.env"
+if git ls-files | grep -q "\.env$"; then
+  error ".env files found in git repository - these should NOT be committed!"
+  echo "  Run: git rm --cached .env backend/.env"
+else
+  if [ -f ".env" ] || [ -f "backend/.env" ]; then
+    success ".env files exist locally but are not tracked in git (good!)"
+  fi
 fi
 
 # Check .gitignore

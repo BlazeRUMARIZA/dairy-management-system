@@ -64,9 +64,79 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response): Promi
     // Active batches
     const activeBatches = await Batch.count({ where: { status: 'in-progress' } });
 
+    // Today's production (sum of completed batches today)
+    const todayProductionResult = await Batch.findOne({
+      where: {
+        createdAt: { [Op.gte]: today },
+        status: 'completed',
+      },
+      attributes: [[fn('SUM', col('quantity')), 'total']],
+      raw: true,
+    });
+
+    // Previous day's production for trend calculation
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayProductionResult = await Batch.findOne({
+      where: {
+        createdAt: { [Op.gte]: yesterday, [Op.lt]: today },
+        status: 'completed',
+      },
+      attributes: [[fn('SUM', col('quantity')), 'total']],
+      raw: true,
+    });
+
+    // Previous month's revenue for trend calculation
+    const lastMonth = new Date(thisMonth);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const lastMonthRevenueResult = await Order.findOne({
+      where: {
+        createdAt: { [Op.gte]: lastMonth, [Op.lt]: thisMonth },
+        status: { [Op.ne]: 'cancelled' },
+      },
+      attributes: [[fn('SUM', col('total')), 'total']],
+      raw: true,
+    });
+
+    // Calculate trends
+    const todayProduction = Number((todayProductionResult as any)?.total || 0);
+    const yesterdayProduction = Number((yesterdayProductionResult as any)?.total || 0);
+    const productionTrend = yesterdayProduction > 0 
+      ? ((todayProduction - yesterdayProduction) / yesterdayProduction) * 100 
+      : 0;
+
+    const monthlyRevenue = Number((monthlyRevenueResult as any)?.total || 0);
+    const lastMonthRevenue = Number((lastMonthRevenueResult as any)?.total || 0);
+    const revenueTrend = lastMonthRevenue > 0 
+      ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+      : 0;
+
+    // Previous day's pending orders for trend
+    const yesterdayPendingOrders = await Order.count({
+      where: {
+        createdAt: { [Op.gte]: yesterday, [Op.lt]: today },
+        status: 'pending',
+      },
+    });
+    const ordersTrend = yesterdayPendingOrders > 0 
+      ? ((pendingOrders - yesterdayPendingOrders) / yesterdayPendingOrders) * 100 
+      : 0;
+
     res.status(200).json({
       success: true,
       data: {
+        // Main stats for StatCards
+        todayProduction: Math.round(todayProduction),
+        pendingOrders,
+        criticalStock: lowStockProducts,
+        monthlyRevenue: Math.round(monthlyRevenue),
+        
+        // Trends (percentage change)
+        productionTrend: Math.round(productionTrend * 10) / 10,
+        ordersTrend: Math.round(ordersTrend * 10) / 10,
+        revenueTrend: Math.round(revenueTrend * 10) / 10,
+        
+        // Additional stats (detailed breakdown)
         products: {
           total: totalProducts,
           lowStock: lowStockProducts,
@@ -77,14 +147,15 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response): Promi
           today: todayOrders,
         },
         revenue: {
-          monthly: (monthlyRevenueResult as any)?.total || 0,
-          today: (todayRevenueResult as any)?.total || 0,
+          monthly: Math.round(monthlyRevenue),
+          today: Math.round(Number((todayRevenueResult as any)?.total || 0)),
         },
         clients: {
           active: activeClients,
         },
         production: {
           activeBatches,
+          today: Math.round(todayProduction),
         },
       },
     });

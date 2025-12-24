@@ -115,31 +115,47 @@ const Dashboard: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening today.</p>
       </div>
 
+      {/* Show info message if no data */}
+      {stats.todayProduction === 0 && stats.pendingOrders === 0 && stats.criticalStock === 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-blue-900 dark:text-blue-100 font-medium">No activity data yet</p>
+              <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">
+                Statistics will appear here once you start creating products, orders, and batches. 
+                Get started by adding your first product or batch!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Today's Production"
-          value={stats.todayProduction ? `${stats.todayProduction.toLocaleString()} L` : '0 L'}
+          value={stats.todayProduction !== undefined ? `${stats.todayProduction.toLocaleString()} L` : '0 L'}
           trend={stats.productionTrend}
           icon={<Milk size={24} />}
           color="blue"
         />
         <StatCard
           title="Pending Orders"
-          value={stats.pendingOrders?.toString() || '0'}
+          value={stats.pendingOrders !== undefined ? stats.pendingOrders.toString() : '0'}
           trend={stats.ordersTrend}
           icon={<Truck size={24} />}
           color="green"
         />
         <StatCard
           title="Critical Stock Alerts"
-          value={stats.criticalStock?.toString() || '0'}
+          value={stats.criticalStock !== undefined ? stats.criticalStock.toString() : '0'}
           icon={<AlertTriangle size={24} />}
           color="red"
         />
         <StatCard
           title="Monthly Revenue"
-          value={stats.monthlyRevenue ? `€${stats.monthlyRevenue.toLocaleString()}` : '€0'}
+          value={stats.monthlyRevenue !== undefined ? `$${stats.monthlyRevenue.toLocaleString()}` : '$0'}
           trend={stats.revenueTrend}
           icon={<DollarSign size={24} />}
           color="green"
