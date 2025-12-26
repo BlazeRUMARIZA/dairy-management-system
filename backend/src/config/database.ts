@@ -33,7 +33,6 @@ sequelize.addModels([User, Product, Client, Order, Batch, Invoice]);
 
 // Initialize model hooks (for password hashing, etc.)
 User.initHooks();
-Product.initHooks();
 Order.initHooks();
 Batch.initHooks();
 Invoice.initHooks();
