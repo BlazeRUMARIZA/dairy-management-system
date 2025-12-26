@@ -35,7 +35,7 @@ export const getBatches = async (req: AuthRequest, res: Response): Promise<void>
     const batches = await Batch.findAll({
       where,
       include: [
-        { model: User, as: 'operatorUser', attributes: ['id', 'name'] },
+        { model: User, as: 'operatorRef', attributes: ['id', 'name'] },
         { model: Product, as: 'productRef', attributes: ['id', 'name'] },
       ],
       order: [['createdAt', 'DESC']],
