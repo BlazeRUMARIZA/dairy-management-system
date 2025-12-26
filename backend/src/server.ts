@@ -20,9 +20,7 @@ const app: Application = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Security middleware
-app.use(helmet());
-
+// CORS configuration MUST come before helmet for preflight requests
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   'http://localhost:3000',
@@ -31,25 +29,40 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+console.log('🔐 CORS allowed origins:', allowedOrigins);
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ CORS: Allowing request with no origin');
+        return callback(null, true);
+      }
       
       if (allowedOrigins.indexOf(origin) !== -1) {
+        console.log(`✅ CORS: Allowing origin: ${origin}`);
         callback(null, true);
       } else {
         // In production, log rejected origins for debugging
         console.log(`⚠️  CORS blocked origin: ${origin}`);
+        console.log(`   Allowed origins:`, allowedOrigins);
         callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
+
+// Security middleware (after CORS)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // Compression
 app.use(compression());
