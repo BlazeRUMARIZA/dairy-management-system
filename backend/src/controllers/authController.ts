@@ -32,12 +32,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // Create user
     const user = await User.create({
-      username: name,
+      name,
       email,
       password,
-      firstName: name.split(' ')[0],
-      lastName: name.split(' ').slice(1).join(' ') || '',
-      role: role || 'staff',
+      role: role || 'viewer',
     });
 
     // Generate token
@@ -48,7 +46,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       token,
       user: {
         id: user.id,
-        username: user.username,
+        name: user.name,
         email: user.email,
         role: user.role,
       },
@@ -100,7 +98,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user is active
-    if (!user.isActive) {
+    if (user.status !== 'active') {
       res.status(401).json({
         success: false,
         message: 'Your account is inactive. Please contact administrator.',
@@ -120,12 +118,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       token,
       user: {
         id: user.id,
-        username: user.username,
+        name: user.name,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
         role: user.role,
         phone: user.phone,
+        avatar: user.avatar,
         lastLogin: user.lastLogin,
       },
     });
@@ -190,7 +187,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     // Send email with reset token
     const emailSent = await emailService.sendPasswordResetEmail(
       user.email,
-      user.username,
+      user.name,
       resetToken
     );
 

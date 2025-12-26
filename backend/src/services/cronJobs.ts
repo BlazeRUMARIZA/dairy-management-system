@@ -17,10 +17,10 @@ async function getAdminEmails(): Promise<Array<{ email: string; name: string }>>
       role: {
         [Op.in]: ['admin', 'manager'],
       },
-      isActive: true,
+      status: 'active',
     },
   });
-  return admins.map(admin => ({ email: admin.email, name: admin.username || admin.email }));
+  return admins.map(admin => ({ email: admin.email, name: admin.name || admin.email }));
 }
 
 // Job 1: Check low stock (runs every 6 hours)
