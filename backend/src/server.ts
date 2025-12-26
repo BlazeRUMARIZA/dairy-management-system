@@ -13,9 +13,6 @@ import cronJobs from './services/cronJobs';
 // Load env vars
 dotenv.config();
 
-// Connect to database
-connectDB();
-
 // Initialize app
 const app: Application = express();
 
@@ -68,6 +65,36 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
+// Health check endpoints FIRST (before DB connection)
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is running',
+    environment: process.env.NODE_ENV || 'production',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/v1/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is running',
+    environment: process.env.NODE_ENV || 'production',
+    version: process.env.API_VERSION || 'v1',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Home route
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Dairy Management System API',
+    version: process.env.API_VERSION || 'v1',
+    documentation: '/api-docs',
+  });
+});
+
 // Import routes
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
@@ -87,36 +114,6 @@ app.use(`/api/${apiVersion}/batches`, batchRoutes);
 app.use(`/api/${apiVersion}/invoices`, invoiceRoutes);
 app.use(`/api/${apiVersion}`, dashboardRoutes);
 
-// Health check endpoints
-app.get('/health', (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API is running',
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-app.get('/api/v1/health', (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API is running',
-    environment: process.env.NODE_ENV,
-    version: apiVersion,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Home route
-app.get('/', (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Dairy Management System API',
-    version: apiVersion,
-    documentation: '/api-docs',
-  });
-});
-
 // Error handler
 app.use(notFound);
 app.use(errorHandler);
@@ -124,33 +121,73 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, () => {
   console.log(`
   ╔════════════════════════════════════════╗
   ║   🥛 Dairy Management System API      ║
   ║   Server running on port ${PORT}        ║
-  ║   Environment: ${process.env.NODE_ENV || 'development'}           ║
+  ║   Environment: ${process.env.NODE_ENV || 'production'}           ║
   ╚════════════════════════════════════════╝
   `);
+  
+  // Connect to database (non-blocking)
+  connectDB()
+    .then(() => {
+      console.log('✅ Database connected successfully');
+      
+      // Test email service (non-blocking)
+      emailService.testEmailConnection().catch((err) => {
+        console.error('⚠️  Email service unavailable:', err.message);
+      });
 
-  // Test email service
-  await emailService.testEmailConnection();
-
-  // Start cron jobs for automated notifications
-  cronJobs.startAllCronJobs();
+      // Start cron jobs for automated notifications (optional)
+      if (process.env.CRON_ENABLED === 'true') {
+        try {
+          cronJobs.startAllCronJobs();
+          console.log('✅ Cron jobs started');
+        } catch (err: any) {
+          console.error('⚠️  Cron jobs failed to start:', err.message);
+        }
+      } else {
+        console.log('⏸️  Cron jobs disabled');
+      }
+    })
+    .catch((err) => {
+      console.error('❌ Database connection failed:', err.message);
+      console.log('⚠️  Server will continue running without database');
+      console.log('⚠️  Please check your database configuration');
+    });
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err: Error) => {
   console.log(`❌ Unhandled Rejection: ${err.message}`);
-  cronJobs.stopAllCronJobs();
-  server.close(() => process.exit(1));
+  // Don't crash the server, just log the error
+  console.log('⚠️  Server continues running');
 });
 
 // Handle SIGTERM gracefully
 process.on('SIGTERM', () => {
   console.log('👋 SIGTERM signal received: closing HTTP server');
-  cronJobs.stopAllCronJobs();
+  try {
+    cronJobs.stopAllCronJobs();
+  } catch (err) {
+    console.error('Error stopping cron jobs:', err);
+  }
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
+});
+
+// Handle SIGINT (Ctrl+C) gracefully
+process.on('SIGINT', () => {
+  console.log('\n👋 SIGINT signal received: closing HTTP server');
+  try {
+    cronJobs.stopAllCronJobs();
+  } catch (err) {
+    console.error('Error stopping cron jobs:', err);
+  }
   server.close(() => {
     console.log('✅ HTTP server closed');
     process.exit(0);
