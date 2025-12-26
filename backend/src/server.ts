@@ -27,6 +27,7 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://dairy-management-frontend-production.up.railway.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -39,6 +40,8 @@ app.use(
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
+        // In production, log rejected origins for debugging
+        console.log(`⚠️  CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
