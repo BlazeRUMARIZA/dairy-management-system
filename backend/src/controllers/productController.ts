@@ -24,7 +24,6 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
         { sku: { [Op.like]: `%${search}%` } },
-        { barcode: { [Op.like]: `%${search}%` } },
       ];
     }
 
@@ -169,7 +168,6 @@ export const updateStock = async (req: AuthRequest, res: Response): Promise<void
 
     if (type === 'add') {
       product.currentStock += quantity;
-      product.lastRestocked = new Date();
     } else if (type === 'subtract') {
       if (product.currentStock < quantity) {
         res.status(400).json({

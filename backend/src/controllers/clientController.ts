@@ -8,12 +8,12 @@ import { AuthRequest } from '../middleware/auth';
 // @access  Private
 export const getClients = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { type, isActive, search } = req.query;
+    const { clientType, isActive, search } = req.query;
     
     let where: any = {};
     
-    if (type) {
-      where.type = type;
+    if (clientType) {
+      where.clientType = clientType;
     }
     
     if (isActive !== undefined) {

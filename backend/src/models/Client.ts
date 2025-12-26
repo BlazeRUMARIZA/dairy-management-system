@@ -28,10 +28,12 @@ export default class Client extends Model {
   name!: string;
 
   @Column({
-    type: DataType.ENUM('Restaurant', 'Grocery', 'Hotel', 'Cafe', 'Retail', 'Wholesaler', 'Other'),
-    allowNull: false,
+    type: DataType.ENUM('retail', 'wholesale', 'distributor'),
+    allowNull: true,
+    defaultValue: 'retail',
+    field: 'clientType',
   })
-  type!: 'Restaurant' | 'Grocery' | 'Hotel' | 'Cafe' | 'Retail' | 'Wholesaler' | 'Other';
+  clientType?: 'retail' | 'wholesale' | 'distributor';
 
   @Column({
     type: DataType.STRING,
@@ -53,42 +55,42 @@ export default class Client extends Model {
 
   @Column({
     type: DataType.TEXT,
-    allowNull: false,
-  })
-  address!: string;
-
-  @Column({
-    type: DataType.JSON,
     allowNull: true,
   })
-  contact?: {
-    name: string;
-    position?: string;
-    email?: string;
-    phone?: string;
-  };
+  address?: string;
 
   @Column({
-    type: DataType.JSON,
+    type: DataType.STRING(100),
     allowNull: true,
   })
-  billingAddress?: {
-    street: string;
-    city: string;
-    zipCode: string;
-    country: string;
-  };
+  city?: string;
 
   @Column({
-    type: DataType.JSON,
+    type: DataType.STRING(100),
+    allowNull: true,
+    defaultValue: 'Rwanda',
+  })
+  country?: string;
+
+  @Column({
+    type: DataType.STRING(100),
     allowNull: true,
   })
-  deliveryAddress?: {
-    street: string;
-    city: string;
-    zipCode: string;
-    country: string;
-  };
+  taxId?: string;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  })
+  creditLimit?: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  })
+  currentBalance?: number;
 
   @Column({
     type: DataType.BOOLEAN,
@@ -97,69 +99,6 @@ export default class Client extends Model {
     field: 'isActive',
   })
   isActive!: boolean;
-
-  @Column({
-    type: DataType.DECIMAL(2, 1),
-    allowNull: true,
-    validate: {
-      min: 0,
-      max: 5,
-    },
-  })
-  rating?: number;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
-    validate: {
-      min: 0,
-    },
-  })
-  totalOrders!: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0,
-    validate: {
-      min: 0,
-    },
-  })
-  totalRevenue!: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0,
-    validate: {
-      min: 0,
-    },
-  })
-  monthlyRevenue!: number;
-
-  @Column({
-    type: DataType.JSON,
-    allowNull: true,
-  })
-  preferences?: {
-    deliveryDays?: string[];
-    paymentTerms?: number;
-    deliveryTime?: string;
-  };
-
-  @Column({
-    type: DataType.JSON,
-    allowNull: false,
-    defaultValue: [],
-  })
-  favoriteProducts!: string[];
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: true,
-  })
-  lastOrderDate?: Date;
 
   @Column({
     type: DataType.TEXT,

@@ -30,12 +30,6 @@ export default class Product extends Model {
   sku!: string;
 
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  barcode?: string;
-
-  @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
@@ -54,20 +48,23 @@ export default class Product extends Model {
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
+    defaultValue: 0,
     validate: {
       min: 0,
     },
+    field: 'minStock',
   })
-  minThreshold!: number;
+  minStock!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     validate: {
       min: 0,
     },
+    field: 'maxStock',
   })
-  maxCapacity!: number;
+  maxStock?: number;
 
   @Column({
     type: DataType.ENUM('L', 'kg', 'units', 'g', 'ml'),
@@ -86,33 +83,23 @@ export default class Product extends Model {
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     validate: {
       min: 0,
     },
   })
-  costPrice!: number;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  location?: string;
+  costPrice?: number;
 
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    defaultValue: 7,
     validate: {
       min: 0,
     },
+    field: 'expiryDays',
   })
-  shelfLife?: number;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  storageTemp?: string;
+  expiryDays?: number;
 
   @Column({
     type: DataType.BOOLEAN,
@@ -121,22 +108,4 @@ export default class Product extends Model {
     field: 'isActive',
   })
   isActive!: boolean;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  image?: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  supplier?: string;
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: true,
-  })
-  lastRestocked?: Date;
 }

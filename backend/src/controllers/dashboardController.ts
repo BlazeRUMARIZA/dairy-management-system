@@ -22,11 +22,11 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response): Promi
     // Total products
     const totalProducts = await Product.count();
 
-    // Low stock products (where currentStock is less than minThreshold)
+    // Low stock products (where currentStock is less than minStock)
     const lowStockProducts = await Product.count({
       where: {
         currentStock: {
-          [Op.lt]: col('minThreshold'),
+          [Op.lt]: col('minStock'),
         },
       },
     });
@@ -329,7 +329,7 @@ export const getInventoryReport = async (_req: AuthRequest, res: Response): Prom
   try {
     // Get all products with stock information
     const products = await Product.findAll({
-      attributes: ['id', 'name', 'category', 'currentStock', 'minThreshold', 'unitPrice'],
+      attributes: ['id', 'name', 'category', 'currentStock', 'minStock', 'unitPrice'],
       raw: true,
     });
 
@@ -351,8 +351,8 @@ export const getInventoryReport = async (_req: AuthRequest, res: Response): Prom
       acc[category].totalStock += parseFloat(product.currentStock || 0);
       acc[category].totalValue += parseFloat(product.currentStock || 0) * parseFloat(product.unitPrice || 0);
       
-      // Check if stock is low (currentStock < minThreshold)
-      if (parseFloat(product.currentStock || 0) < parseFloat(product.minThreshold || 0)) {
+      // Check if stock is low (currentStock < minStock)
+      if (parseFloat(product.currentStock || 0) < parseFloat(product.minStock || 0)) {
         acc[category].lowStockCount += 1;
       }
 

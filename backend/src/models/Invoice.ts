@@ -6,9 +6,9 @@ import {
   ForeignKey,
   BelongsTo,
 } from 'sequelize-typescript';
-import Order from './Order';
 import Client from './Client';
-import { User } from './User';
+import Order from './Order';
+import User from './User';
 
 @Table({
   tableName: 'invoices',
@@ -16,7 +16,7 @@ import { User } from './User';
 })
 export default class Invoice extends Model {
   @Column({
-    type: DataType.STRING,
+    type: DataType.STRING(50),
     allowNull: false,
     unique: true,
   })
@@ -43,70 +43,8 @@ export default class Invoice extends Model {
   client!: Client;
 
   @Column({
-    type: DataType.STRING,
-    allowNull: false,
-  })
-  clientName!: string;
-
-  @Column({
-    type: DataType.JSON,
-    allowNull: false,
-  })
-  items!: Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }>;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      min: 0,
-    },
-  })
-  subtotal!: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      min: 0,
-    },
-  })
-  tax!: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
-    validate: {
-      min: 0,
-    },
-  })
-  discount?: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      min: 0,
-    },
-  })
-  total!: number;
-
-  @Column({
-    type: DataType.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
-    allowNull: false,
-    defaultValue: 'draft',
-  })
-  status!: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-
-  @Column({
     type: DataType.DATE,
     allowNull: false,
-    defaultValue: DataType.NOW,
   })
   issueDate!: Date;
 
@@ -117,22 +55,56 @@ export default class Invoice extends Model {
   dueDate!: Date;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
     allowNull: true,
+    defaultValue: 'draft',
   })
-  paidDate?: Date;
+  status!: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
   })
-  paymentMethod?: string;
+  subtotal!: number;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  })
+  tax?: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  })
+  discount?: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+  })
+  total!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  })
+  amountPaid?: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+  })
+  balance!: number;
+
+  @Column({
+    type: DataType.ENUM('cash', 'bank_transfer', 'mobile_money', 'check', 'other'),
     allowNull: true,
   })
-  paymentReference?: string;
+  paymentMethod?: 'cash' | 'bank_transfer' | 'mobile_money' | 'check' | 'other';
 
   @Column({
     type: DataType.TEXT,
@@ -140,41 +112,20 @@ export default class Invoice extends Model {
   })
   notes?: string;
 
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  termsAndConditions?: string;
-
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
   })
-  createdBy!: number;
+  createdBy?: number;
 
   @BelongsTo(() => User, 'createdBy')
-  creator!: User;
+  creator?: User;
 
-  // Initialize hooks
   static initHooks() {
-    this.addHook('beforeCreate', async (instance: Invoice) => {
-      if (!instance.invoiceNumber) {
-        const year = new Date().getFullYear();
-        const count = await Invoice.count();
-        instance.invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
-      }
-
-      // Auto-update status based on due date
-      if (instance.status === 'sent' && instance.dueDate < new Date() && !instance.paidDate) {
-        instance.status = 'overdue';
-      }
-    });
-
-    this.addHook('beforeUpdate', (instance: Invoice) => {
-      // Auto-update status based on due date
-      if (instance.status === 'sent' && instance.dueDate < new Date() && !instance.paidDate) {
-        instance.status = 'overdue';
+    this.addHook('beforeCreate', (invoice: Invoice) => {
+      if (!invoice.invoiceNumber) {
+        invoice.invoiceNumber = `INV-${Date.now()}`;
       }
     });
   }

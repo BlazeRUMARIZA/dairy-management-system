@@ -41,7 +41,7 @@ export function startLowStockAlert() {
       const lowStockProducts = await Product.findAll({
         where: {
           currentStock: {
-            [Op.lt]: Product.sequelize!.col('minThreshold'),
+            [Op.lt]: Product.sequelize!.col('minStock'),
           },
         },
       });
@@ -93,9 +93,9 @@ export function startExpirationWarning() {
       });
 
       const expiringBatches = batches.filter(batch => {
-        const productShelfLife = (batch.productRef?.shelfLife as any) || 7;
+        const productExpiryDays = (batch.productRef?.expiryDays as any) || 7;
         const expiryDate = new Date(batch.startTime);
-        expiryDate.setDate(expiryDate.getDate() + Number(productShelfLife));
+        expiryDate.setDate(expiryDate.getDate() + Number(productExpiryDays));
         
         const daysUntilExpiry = Math.ceil(
           (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)

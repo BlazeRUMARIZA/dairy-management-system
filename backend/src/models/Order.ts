@@ -5,11 +5,10 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-  HasOne,
+  HasMany,
 } from 'sequelize-typescript';
 import Client from './Client';
-import { User } from './User';
-import Invoice from './Invoice';
+import User from './User';
 
 @Table({
   tableName: 'orders',
@@ -17,7 +16,7 @@ import Invoice from './Invoice';
 })
 export default class Order extends Model {
   @Column({
-    type: DataType.STRING,
+    type: DataType.STRING(50),
     allowNull: false,
     unique: true,
   })
@@ -34,145 +33,58 @@ export default class Order extends Model {
   client!: Client;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.DATE,
     allowNull: false,
   })
-  clientName!: string;
+  orderDate!: Date;
 
   @Column({
-    type: DataType.ENUM('pending', 'confirmed', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'),
-    allowNull: false,
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  deliveryDate?: Date;
+
+  @Column({
+    type: DataType.ENUM('pending', 'confirmed', 'in_progress', 'completed', 'cancelled'),
+    allowNull: true,
     defaultValue: 'pending',
   })
-  status!: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in-transit' | 'delivered' | 'cancelled';
+  status!: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
   @Column({
-    type: DataType.JSON,
-    allowNull: false,
+    type: DataType.ENUM('unpaid', 'partial', 'paid'),
+    allowNull: true,
+    defaultValue: 'unpaid',
   })
-  items!: Array<{
-    productId: number;
-    productName: string;
-    quantity: number;
-    unit: string;
-    unitPrice: number;
-    total: number;
-  }>;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      min: 0,
-    },
-  })
-  subtotal!: number;
+  paymentStatus!: 'unpaid' | 'partial' | 'paid';
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0,
-    validate: {
-      min: 0,
-    },
   })
-  tax!: number;
+  total!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: true,
     defaultValue: 0,
-    validate: {
-      min: 0,
-    },
   })
   discount?: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      min: 0,
-    },
-  })
-  total!: number;
-
-  @Column({
-    type: DataType.JSON,
-    allowNull: false,
-  })
-  deliveryAddress!: {
-    street: string;
-    city: string;
-    zipCode: string;
-    country: string;
-  };
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-  })
-  deliveryDate!: Date;
-
-  @Column({
-    type: DataType.STRING,
     allowNull: true,
+    defaultValue: 0,
   })
-  deliveryTime?: string;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  driverId?: number;
-
-  @BelongsTo(() => User, 'driverId')
-  driver?: User;
+  tax?: number;
 
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  driverName?: string;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  specialInstructions?: string;
-
-  @Column({
-    type: DataType.JSON,
+    type: DataType.DECIMAL(10, 2),
     allowNull: false,
-    defaultValue: {
-      status: 'pending',
-      events: []
-    },
+    defaultValue: 0,
   })
-  tracking!: {
-    status: string;
-    events: Array<{
-      status: string;
-      timestamp: Date;
-      note?: string;
-      location?: string;
-      updatedBy?: number;
-    }>;
-  };
-
-  @Column({
-    type: DataType.ENUM('pending', 'paid', 'partial', 'overdue'),
-    allowNull: false,
-    defaultValue: 'pending',
-  })
-  paymentStatus!: 'pending' | 'paid' | 'partial' | 'overdue';
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  paymentMethod?: string;
+  grandTotal!: number;
 
   @Column({
     type: DataType.TEXT,
@@ -183,23 +95,17 @@ export default class Order extends Model {
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
   })
-  createdBy!: number;
+  createdBy?: number;
 
   @BelongsTo(() => User, 'createdBy')
-  creator!: User;
+  creator?: User;
 
-  @HasOne(() => Invoice)
-  invoice!: Invoice;
-
-  // Initialize hooks
   static initHooks() {
-    this.addHook('beforeCreate', async (instance: Order) => {
-      if (!instance.orderNumber) {
-        const year = new Date().getFullYear();
-        const count = await Order.count();
-        instance.orderNumber = `ORD-${year}-${String(count + 1).padStart(4, '0')}`;
+    this.addHook('beforeCreate', (order: Order) => {
+      if (!order.orderNumber) {
+        order.orderNumber = `ORD-${Date.now()}`;
       }
     });
   }
