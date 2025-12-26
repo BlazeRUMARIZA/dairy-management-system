@@ -46,7 +46,7 @@ export const protect = async (
         return;
       }
 
-      if (user.status !== 'active') {
+      if (!user.isActive) {
         res.status(401).json({
           success: false,
           message: 'User account is inactive',

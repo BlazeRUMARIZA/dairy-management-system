@@ -17,8 +17,9 @@ export class User extends Model {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    unique: true,
   })
-  name!: string;
+  username!: string;
 
   @Column({
     type: DataType.STRING,
@@ -29,14 +30,26 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
+    allowNull: true,
+  })
+  firstName?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  lastName?: string;
+
+  @Column({
+    type: DataType.STRING,
     allowNull: false,
   })
   password!: string;
 
   @Column({
-    type: DataType.ENUM('admin', 'manager', 'operator', 'driver', 'viewer'),
+    type: DataType.ENUM('admin', 'manager', 'staff'),
     allowNull: false,
-    defaultValue: 'viewer',
+    defaultValue: 'staff',
   })
   role!: string;
 
@@ -47,17 +60,12 @@ export class User extends Model {
   phone?: string;
 
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  avatar?: string;
-
-  @Column({
-    type: DataType.ENUM('active', 'inactive', 'suspended'),
+    type: DataType.BOOLEAN,
     allowNull: false,
-    defaultValue: 'active',
+    defaultValue: true,
+    field: 'isActive',
   })
-  status!: string;
+  isActive!: boolean;
 
   @Column({
     type: DataType.STRING,
