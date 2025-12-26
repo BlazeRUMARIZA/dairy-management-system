@@ -22,10 +22,12 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response): Promi
     // Total products
     const totalProducts = await Product.count();
 
-    // Low stock products
+    // Low stock products (where currentStock is less than minThreshold)
     const lowStockProducts = await Product.count({
       where: {
-        status: { [Op.in]: ['low', 'critical', 'out-of-stock'] },
+        currentStock: {
+          [Op.lt]: col('minThreshold'),
+        },
       },
     });
 
@@ -59,7 +61,7 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response): Promi
     });
 
     // Active clients
-    const activeClients = await Client.count({ where: { status: 'active' } });
+    const activeClients = await Client.count({ where: { isActive: true } });
 
     // Active batches
     const activeBatches = await Batch.count({ where: { status: 'in-progress' } });
@@ -325,13 +327,13 @@ export const getProductionReport = async (req: AuthRequest, res: Response): Prom
 // @access  Private
 export const getInventoryReport = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Get all products
+    // Get all products with stock information
     const products = await Product.findAll({
-      attributes: ['category', 'currentStock', 'unitPrice', 'status'],
+      attributes: ['id', 'name', 'category', 'currentStock', 'minThreshold', 'unitPrice'],
       raw: true,
     });
 
-    // Group by category
+    // Group by category and calculate stock status
     const groupedData = products.reduce((acc: any, product: any) => {
       const category = product.category || 'Uncategorized';
       
@@ -349,7 +351,8 @@ export const getInventoryReport = async (_req: AuthRequest, res: Response): Prom
       acc[category].totalStock += parseFloat(product.currentStock || 0);
       acc[category].totalValue += parseFloat(product.currentStock || 0) * parseFloat(product.unitPrice || 0);
       
-      if (['low', 'critical', 'out-of-stock'].includes(product.status)) {
+      // Check if stock is low (currentStock < minThreshold)
+      if (parseFloat(product.currentStock || 0) < parseFloat(product.minThreshold || 0)) {
         acc[category].lowStockCount += 1;
       }
 

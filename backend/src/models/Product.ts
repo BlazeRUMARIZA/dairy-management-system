@@ -115,11 +115,12 @@ export default class Product extends Model {
   storageTemp?: string;
 
   @Column({
-    type: DataType.ENUM('normal', 'low', 'critical', 'out-of-stock'),
+    type: DataType.BOOLEAN,
     allowNull: false,
-    defaultValue: 'normal',
+    defaultValue: true,
+    field: 'isActive',
   })
-  status!: 'normal' | 'low' | 'critical' | 'out-of-stock';
+  isActive!: boolean;
 
   @Column({
     type: DataType.STRING,
@@ -138,31 +139,4 @@ export default class Product extends Model {
     allowNull: true,
   })
   lastRestocked?: Date;
-
-  // Initialize hooks
-  static initHooks() {
-    this.addHook('beforeCreate', (instance: Product) => {
-      if (instance.currentStock === 0) {
-        instance.status = 'out-of-stock';
-      } else if (instance.currentStock < instance.minThreshold * 0.5) {
-        instance.status = 'critical';
-      } else if (instance.currentStock < instance.minThreshold) {
-        instance.status = 'low';
-      } else {
-        instance.status = 'normal';
-      }
-    });
-
-    this.addHook('beforeUpdate', (instance: Product) => {
-      if (instance.currentStock === 0) {
-        instance.status = 'out-of-stock';
-      } else if (instance.currentStock < instance.minThreshold * 0.5) {
-        instance.status = 'critical';
-      } else if (instance.currentStock < instance.minThreshold) {
-        instance.status = 'low';
-      } else {
-        instance.status = 'normal';
-      }
-    });
-  }
 }

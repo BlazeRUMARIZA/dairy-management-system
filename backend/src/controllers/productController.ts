@@ -8,7 +8,7 @@ import { AuthRequest } from '../middleware/auth';
 // @access  Private
 export const getProducts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { category, status, search } = req.query;
+    const { category, isActive, search } = req.query;
     
     let where: any = {};
     
@@ -16,8 +16,8 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
       where.category = category;
     }
     
-    if (status) {
-      where.status = status;
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true' || isActive === '1';
     }
     
     if (search) {

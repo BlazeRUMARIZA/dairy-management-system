@@ -91,11 +91,12 @@ export default class Client extends Model {
   };
 
   @Column({
-    type: DataType.ENUM('active', 'inactive', 'suspended'),
+    type: DataType.BOOLEAN,
     allowNull: false,
-    defaultValue: 'active',
+    defaultValue: true,
+    field: 'isActive',
   })
-  status!: 'active' | 'inactive' | 'suspended';
+  isActive!: boolean;
 
   @Column({
     type: DataType.DECIMAL(2, 1),
