@@ -8,11 +8,11 @@ import Batch from '../models/Batch';
 import Invoice from '../models/Invoice';
 
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME || 'dairy_management',
+  database: process.env.DB_DATABASE || process.env.DB_NAME || 'dairy_management',
   dialect: 'mysql',
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
-  username: process.env.DB_USER || 'root',
+  username: process.env.DB_USERNAME || process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
@@ -44,8 +44,8 @@ const connectDB = async (): Promise<void> => {
     console.log(`✅ MySQL Connected: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '3306'}`);
     
     // Sync models in development (create tables if they don't exist)
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: false });
+    if (process.env.NODE_ENV === 'development' || process.env.DB_SYNC === 'true') {
+      await sequelize.sync({ alter: process.env.DB_ALTER === 'true' });
       console.log('✅ Database models synchronized');
     }
 
@@ -54,9 +54,15 @@ const connectDB = async (): Promise<void> => {
       console.log('MySQL connection closed due to app termination');
       process.exit(0);
     });
-  } catch (error) {
-    console.error('❌ Error connecting to MySQL:', error);
-    process.exit(1);
+  } catch (error: any) {
+    console.error('❌ Error connecting to MySQL:', error.message);
+    console.log('⚠️  Server will continue running without database');
+    console.log('⚠️  Please check your database configuration:');
+    console.log(`    DB_HOST: ${process.env.DB_HOST || 'not set'}`);
+    console.log(`    DB_PORT: ${process.env.DB_PORT || 'not set'}`);
+    console.log(`    DB_USERNAME: ${process.env.DB_USERNAME || process.env.DB_USER || 'not set'}`);
+    console.log(`    DB_DATABASE: ${process.env.DB_DATABASE || process.env.DB_NAME || 'not set'}`);
+    // Don't exit - let server continue running
   }
 };
 
