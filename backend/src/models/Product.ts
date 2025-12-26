@@ -30,6 +30,12 @@ export default class Product extends Model {
   sku!: string;
 
   @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  barcode?: string;
+
+  @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
@@ -39,32 +45,20 @@ export default class Product extends Model {
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0,
-    validate: {
-      min: 0,
-    },
   })
   currentStock!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
-    defaultValue: 0,
-    validate: {
-      min: 0,
-    },
-    field: 'minStock',
   })
-  minStock!: number;
+  minThreshold!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    validate: {
-      min: 0,
-    },
-    field: 'maxStock',
+    allowNull: false,
   })
-  maxStock?: number;
+  maxCapacity!: number;
 
   @Column({
     type: DataType.ENUM('L', 'kg', 'units', 'g', 'ml'),
@@ -75,37 +69,81 @@ export default class Product extends Model {
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
-    validate: {
-      min: 0,
-    },
   })
   unitPrice!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    validate: {
-      min: 0,
-    },
+    allowNull: false,
   })
-  costPrice?: number;
+  costPrice!: number;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  location?: string;
 
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
-    defaultValue: 7,
-    validate: {
-      min: 0,
-    },
-    field: 'expiryDays',
   })
-  expiryDays?: number;
+  shelfLife?: number;
 
   @Column({
-    type: DataType.BOOLEAN,
-    allowNull: false,
-    defaultValue: true,
-    field: 'isActive',
+    type: DataType.STRING,
+    allowNull: true,
   })
-  isActive!: boolean;
+  storageTemp?: string;
+
+  @Column({
+    type: DataType.ENUM('normal', 'low', 'critical', 'out-of-stock'),
+    allowNull: false,
+    defaultValue: 'normal',
+  })
+  status!: 'normal' | 'low' | 'critical' | 'out-of-stock';
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  image?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  supplier?: string;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  lastRestocked?: Date;
+
+  static initHooks() {
+    this.addHook('beforeCreate', (instance: Product) => {
+      if (instance.currentStock === 0) {
+        instance.status = 'out-of-stock';
+      } else if (instance.currentStock < instance.minThreshold * 0.5) {
+        instance.status = 'critical';
+      } else if (instance.currentStock < instance.minThreshold) {
+        instance.status = 'low';
+      } else {
+        instance.status = 'normal';
+      }
+    });
+
+    this.addHook('beforeUpdate', (instance: Product) => {
+      if (instance.currentStock === 0) {
+        instance.status = 'out-of-stock';
+      } else if (instance.currentStock < instance.minThreshold * 0.5) {
+        instance.status = 'critical';
+      } else if (instance.currentStock < instance.minThreshold) {
+        instance.status = 'low';
+      } else {
+        instance.status = 'normal';
+      }
+    });
+  }
 }

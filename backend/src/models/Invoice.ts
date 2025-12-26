@@ -16,7 +16,7 @@ import User from './User';
 })
 export default class Invoice extends Model {
   @Column({
-    type: DataType.STRING(50),
+    type: DataType.STRING,
     allowNull: false,
     unique: true,
   })
@@ -43,23 +43,21 @@ export default class Invoice extends Model {
   client!: Client;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.STRING,
     allowNull: false,
   })
-  issueDate!: Date;
+  clientName!: string;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.JSON,
     allowNull: false,
   })
-  dueDate!: Date;
-
-  @Column({
-    type: DataType.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
-    allowNull: true,
-    defaultValue: 'draft',
-  })
-  status!: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  items!: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -69,10 +67,9 @@ export default class Invoice extends Model {
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
+    allowNull: false,
   })
-  tax?: number;
+  tax!: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -88,23 +85,41 @@ export default class Invoice extends Model {
   total!: number;
 
   @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
+    type: DataType.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'draft',
   })
-  amountPaid?: number;
+  status!: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
   @Column({
-    type: DataType.DECIMAL(10, 2),
+    type: DataType.DATE,
     allowNull: false,
   })
-  balance!: number;
+  issueDate!: Date;
 
   @Column({
-    type: DataType.ENUM('cash', 'bank_transfer', 'mobile_money', 'check', 'other'),
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  dueDate!: Date;
+
+  @Column({
+    type: DataType.DATE,
     allowNull: true,
   })
-  paymentMethod?: 'cash' | 'bank_transfer' | 'mobile_money' | 'check' | 'other';
+  paidDate?: Date;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  paymentMethod?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  paymentReference?: string;
 
   @Column({
     type: DataType.TEXT,
@@ -112,15 +127,21 @@ export default class Invoice extends Model {
   })
   notes?: string;
 
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  termsAndConditions?: string;
+
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  createdBy?: number;
+  createdBy!: number;
 
   @BelongsTo(() => User, 'createdBy')
-  creator?: User;
+  creator!: User;
 
   static initHooks() {
     this.addHook('beforeCreate', (invoice: Invoice) => {

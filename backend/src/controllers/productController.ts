@@ -8,7 +8,7 @@ import { AuthRequest } from '../middleware/auth';
 // @access  Private
 export const getProducts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { category, isActive, search } = req.query;
+    const { category, status, search } = req.query;
     
     let where: any = {};
     
@@ -16,14 +16,15 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
       where.category = category;
     }
     
-    if (isActive !== undefined) {
-      where.isActive = isActive === 'true' || isActive === '1';
+    if (status) {
+      where.status = status;
     }
     
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
         { sku: { [Op.like]: `%${search}%` } },
+        { barcode: { [Op.like]: `%${search}%` } },
       ];
     }
 
@@ -168,6 +169,7 @@ export const updateStock = async (req: AuthRequest, res: Response): Promise<void
 
     if (type === 'add') {
       product.currentStock += quantity;
+      product.lastRestocked = new Date();
     } else if (type === 'subtract') {
       if (product.currentStock < quantity) {
         res.status(400).json({

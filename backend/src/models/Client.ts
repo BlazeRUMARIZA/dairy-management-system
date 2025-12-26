@@ -28,12 +28,10 @@ export default class Client extends Model {
   name!: string;
 
   @Column({
-    type: DataType.ENUM('retail', 'wholesale', 'distributor'),
-    allowNull: true,
-    defaultValue: 'retail',
-    field: 'clientType',
+    type: DataType.ENUM('Restaurant', 'Grocery', 'Hotel', 'Cafe', 'Retail', 'Wholesaler', 'Other'),
+    allowNull: false,
   })
-  clientType?: 'retail' | 'wholesale' | 'distributor';
+  type!: 'Restaurant' | 'Grocery' | 'Hotel' | 'Cafe' | 'Retail' | 'Wholesaler' | 'Other';
 
   @Column({
     type: DataType.STRING,
@@ -55,50 +53,112 @@ export default class Client extends Model {
 
   @Column({
     type: DataType.TEXT,
-    allowNull: true,
-  })
-  address?: string;
-
-  @Column({
-    type: DataType.STRING(100),
-    allowNull: true,
-  })
-  city?: string;
-
-  @Column({
-    type: DataType.STRING(100),
-    allowNull: true,
-    defaultValue: 'Rwanda',
-  })
-  country?: string;
-
-  @Column({
-    type: DataType.STRING(100),
-    allowNull: true,
-  })
-  taxId?: string;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
-  })
-  creditLimit?: number;
-
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
-  })
-  currentBalance?: number;
-
-  @Column({
-    type: DataType.BOOLEAN,
     allowNull: false,
-    defaultValue: true,
-    field: 'isActive',
   })
-  isActive!: boolean;
+  address!: string;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  contact?: {
+    name: string;
+    position?: string;
+    email?: string;
+    phone?: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  billingAddress?: {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  deliveryAddress?: {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+  };
+
+  @Column({
+    type: DataType.ENUM('active', 'inactive', 'suspended'),
+    allowNull: false,
+    defaultValue: 'active',
+  })
+  status!: 'active' | 'inactive' | 'suspended';
+
+  @Column({
+    type: DataType.DECIMAL(2, 1),
+    allowNull: true,
+    validate: {
+      min: 0,
+      max: 5,
+    },
+  })
+  rating?: number;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  totalOrders!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  totalRevenue!: number;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+    },
+  })
+  monthlyRevenue!: number;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+  })
+  preferences?: {
+    deliveryDays?: string[];
+    paymentTerms?: number;
+    deliveryTime?: string;
+  };
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+    defaultValue: [],
+  })
+  favoriteProducts!: string[];
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  lastOrderDate?: Date;
 
   @Column({
     type: DataType.TEXT,
@@ -106,11 +166,9 @@ export default class Client extends Model {
   })
   notes?: string;
 
-  // Relationships
   @HasMany(() => Order)
   orders!: Order[];
 
   @HasMany(() => Invoice)
   invoices!: Invoice[];
 }
-

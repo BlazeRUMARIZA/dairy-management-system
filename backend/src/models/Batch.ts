@@ -15,21 +15,33 @@ import User from './User';
 })
 export default class Batch extends Model {
   @Column({
-    type: DataType.STRING(50),
+    type: DataType.STRING,
     allowNull: false,
     unique: true,
   })
   batchNumber!: string;
 
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  product!: string;
+
+  @Column({
+    type: DataType.ENUM('milk', 'yogurt', 'cheese', 'butter', 'cream', 'other'),
+    allowNull: false,
+  })
+  productType!: 'milk' | 'yogurt' | 'cheese' | 'butter' | 'cream' | 'other';
+
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
   })
-  productId!: number;
+  productId?: number;
 
   @BelongsTo(() => Product)
-  productRef!: Product;
+  productRef?: Product;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -38,11 +50,33 @@ export default class Batch extends Model {
   quantity!: number;
 
   @Column({
-    type: DataType.ENUM('liters', 'kg', 'pieces'),
-    allowNull: true,
-    defaultValue: 'liters',
+    type: DataType.ENUM('L', 'kg', 'units'),
+    allowNull: false,
   })
-  unit!: 'liters' | 'kg' | 'pieces';
+  unit!: 'L' | 'kg' | 'units';
+
+  @Column({
+    type: DataType.ENUM('pending', 'in-progress', 'completed', 'failed', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'pending',
+  })
+  status!: 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled';
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  operatorId!: number;
+
+  @BelongsTo(() => User, 'operatorId')
+  operatorRef?: User;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  operator!: string;
 
   @Column({
     type: DataType.DATE,
@@ -57,17 +91,32 @@ export default class Batch extends Model {
   endTime?: Date;
 
   @Column({
-    type: DataType.ENUM('planned', 'in_progress', 'completed', 'cancelled'),
+    type: DataType.DECIMAL(5, 2),
     allowNull: true,
-    defaultValue: 'planned',
   })
-  status!: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  temperature?: number;
 
   @Column({
-    type: DataType.DECIMAL(10, 2),
+    type: DataType.DECIMAL(4, 2),
     allowNull: true,
   })
-  cost?: number;
+  pH?: number;
+
+  @Column({
+    type: DataType.DECIMAL(5, 2),
+    allowNull: true,
+  })
+  yield?: number;
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: false,
+  })
+  qualityChecks!: {
+    temperature?: string;
+    pH?: string;
+    bacteria?: string;
+  };
 
   @Column({
     type: DataType.TEXT,
@@ -76,32 +125,38 @@ export default class Batch extends Model {
   notes?: string;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.JSON,
     allowNull: true,
   })
-  expiryDate?: Date;
+  ingredients?: any[];
 
   @Column({
-    type: DataType.ENUM('pending', 'passed', 'failed'),
-    allowNull: true,
-    defaultValue: 'pending',
-  })
-  qualityCheck!: 'pending' | 'passed' | 'failed';
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
+    type: DataType.JSON,
     allowNull: true,
   })
-  producedBy?: number;
-
-  @BelongsTo(() => User, 'producedBy')
-  producer?: User;
+  equipment?: any[];
 
   static initHooks() {
     this.addHook('beforeCreate', (batch: Batch) => {
       if (!batch.batchNumber) {
-        batch.batchNumber = `BCH-${Date.now()}`;
+        const randomSuffix = Math.random().toString(36).substring(2, 15).toUpperCase();
+        batch.batchNumber = `BATCH-${Date.now()}-${randomSuffix}`;
+      }
+      if (!batch.qualityChecks) {
+        batch.qualityChecks = {
+          temperature: 'pending',
+          pH: 'pending',
+          bacteria: 'pending'
+        };
+      }
+      if (!batch.ingredients) {
+        batch.ingredients = [];
+      }
+      if (!batch.equipment) {
+        batch.equipment = [];
+      }
+      if (batch.yield === undefined || batch.yield === null) {
+        batch.yield = 0;
       }
     });
   }

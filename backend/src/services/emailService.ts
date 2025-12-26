@@ -156,7 +156,7 @@ export const sendLowStockAlert = async (
       <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center; color: #dc2626;">
         <strong>${Number(product.currentStock || 0).toFixed(2)}</strong>
       </td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${Number(product.minStock || 0).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${Number(product.minThreshold || 0).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -209,9 +209,9 @@ export const sendExpirationWarning = async (
 ) => {
   const batchesHtml = batches.map(batch => {
     // Calculate expiry date based on start time + product shelf life
-    const productExpiryDays = (batch.productRef?.expiryDays as any) || 7; // default 7 days
+    const productShelfLife = (batch.productRef?.shelfLife as any) || 7; // default 7 days
     const expiryDate = new Date(batch.startTime);
-    expiryDate.setDate(expiryDate.getDate() + Number(productExpiryDays));
+    expiryDate.setDate(expiryDate.getDate() + Number(productShelfLife));
     
     const daysUntilExpiry = Math.ceil(
       (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
