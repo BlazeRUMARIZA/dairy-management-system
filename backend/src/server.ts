@@ -7,7 +7,6 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/database';
 import { errorHandler, notFound } from './middleware/error';
-import emailService from './services/emailService';
 import cronJobs from './services/cronJobs';
 
 // Load env vars
@@ -151,21 +150,17 @@ const server = app.listen(PORT, () => {
     .then(() => {
       console.log('✅ Database connected successfully');
       
-      // Test email service (non-blocking)
-      emailService.testEmailConnection().catch((err) => {
-        console.error('⚠️  Email service unavailable:', err.message);
-      });
-
       // Start cron jobs for automated notifications (optional)
+      // Email notifications will only work if email service is configured
       if (process.env.CRON_ENABLED === 'true') {
         try {
           cronJobs.startAllCronJobs();
-          console.log('✅ Cron jobs started');
+          console.log('✅ Cron jobs started (email notifications enabled)');
         } catch (err: any) {
           console.error('⚠️  Cron jobs failed to start:', err.message);
         }
       } else {
-        console.log('⏸️  Cron jobs disabled');
+        console.log('⏸️  Cron jobs disabled (set CRON_ENABLED=true to enable)');
       }
     })
     .catch((err) => {
