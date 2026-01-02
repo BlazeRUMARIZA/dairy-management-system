@@ -48,10 +48,26 @@ const Settings: React.FC = () => {
   }, [activeTab])
 
   const loadUsers = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      // Currently no endpoint to get all users, using seed data
-      // In production, you'd call: const response = await api.users.getAll()
+      // Load users from API
+      const response = await api.users.getAll()
+      if (response.success) {
+        setUsers(response.data)
+      } else {
+        console.error('Failed to load users:', response.message)
+        // Fallback to mock data for development
+        setUsers([
+          { id: 1, name: 'Admin User', email: 'admin@dairy.com', role: 'admin', status: 'active' },
+          { id: 2, name: 'Manager User', email: 'manager@dairy.com', role: 'manager', status: 'active' },
+          { id: 3, name: 'Operator User', email: 'operator@dairy.com', role: 'operator', status: 'active' },
+          { id: 4, name: 'Driver User', email: 'driver@dairy.com', role: 'driver', status: 'active' },
+          { id: 5, name: 'Viewer User', email: 'viewer@dairy.com', role: 'viewer', status: 'inactive' },
+        ])
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err)
+      // Fallback to mock data
       setUsers([
         { id: 1, name: 'Admin User', email: 'admin@dairy.com', role: 'admin', status: 'active' },
         { id: 2, name: 'Manager User', email: 'manager@dairy.com', role: 'manager', status: 'active' },
@@ -59,8 +75,6 @@ const Settings: React.FC = () => {
         { id: 4, name: 'Driver User', email: 'driver@dairy.com', role: 'driver', status: 'active' },
         { id: 5, name: 'Viewer User', email: 'viewer@dairy.com', role: 'viewer', status: 'inactive' },
       ])
-    } catch (err) {
-      console.error('Failed to load users:', err)
     } finally {
       setLoading(false)
     }
@@ -93,12 +107,16 @@ const Settings: React.FC = () => {
     if (!confirm('Are you sure you want to delete this user?')) return
     
     try {
-      // In a real app, call API to delete user
-      setUsers(users.filter(u => u.id !== id))
-      alert('User deleted successfully')
-    } catch (err) {
+      const response = await api.users.delete(id)
+      if (response.success) {
+        setUsers(users.filter(u => u.id !== id))
+        alert('User deleted successfully')
+      } else {
+        alert('Failed to delete user: ' + (response.message || 'Unknown error'))
+      }
+    } catch (err: any) {
       console.error('Failed to delete user:', err)
-      alert('Failed to delete user')
+      alert('Failed to delete user: ' + (err?.message || 'Unknown error'))
     }
   }
 
@@ -107,33 +125,38 @@ const Settings: React.FC = () => {
     
     try {
       if (editMode) {
-        // Update user - currently only updates local state
-        // In production, you'd call: await api.users.update(selectedUser.id, userData)
-        setUsers(users.map(u => 
-          u.id === selectedUser.id 
-            ? { ...u, name: userFormData.name, email: userFormData.email, role: userFormData.role }
-            : u
-        ))
-        alert('User updated successfully')
+        // Update user via API
+        const userData = {
+          name: userFormData.name,
+          email: userFormData.email,
+          role: userFormData.role,
+        }
+        
+        const response = await api.users.update(selectedUser.id, userData)
+        
+        if (response.success) {
+          // Update local state
+          setUsers(users.map(u => 
+            u.id === selectedUser.id 
+              ? { ...u, ...userData }
+              : u
+          ))
+          alert('User updated successfully')
+        } else {
+          alert('Failed to update user: ' + (response.message || 'Unknown error'))
+        }
       } else {
         // Create new user via API
-        const response = await api.auth.register({
+        const response = await api.users.create({
           name: userFormData.name,
           email: userFormData.email,
           password: userFormData.password,
-          role: userFormData.role
+          role: userFormData.role,
         })
         
         if (response.success) {
-          // Add to local list
-          const newUser = {
-            id: response.data?.id || Date.now(),
-            name: userFormData.name,
-            email: userFormData.email,
-            role: userFormData.role,
-            status: 'active'
-          }
-          setUsers([...users, newUser])
+          // Reload users list to get the new user with proper ID
+          await loadUsers()
           alert(`User created successfully!\n\nEmail: ${userFormData.email}\nPassword: ${userFormData.password}\n\nThey can now log in with these credentials.`)
         } else {
           alert('Failed to create user: ' + (response.message || 'Unknown error'))

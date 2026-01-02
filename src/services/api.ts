@@ -631,10 +631,69 @@ export const reportsApi = {
 };
 
 /**
+ * Users API
+ */
+export const usersApi = {
+  /**
+   * Get all users
+   */
+  getAll: async () => {
+    return request('/users');
+  },
+
+  /**
+   * Get user by ID
+   */
+  getById: async (id: string | number) => {
+    return request(`/users/${id}`);
+  },
+
+  /**
+   * Create user
+   */
+  create: async (userData: any) => {
+    return request('/users', {
+      method: 'POST',
+      body: userData,
+    });
+  },
+
+  /**
+   * Update user
+   */
+  update: async (id: string | number, userData: any) => {
+    return request(`/users/${id}`, {
+      method: 'PUT',
+      body: userData,
+    });
+  },
+
+  /**
+   * Delete user
+   */
+  delete: async (id: string | number) => {
+    return request(`/users/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Update user status
+   */
+  updateStatus: async (id: string | number, status: string) => {
+    return request(`/users/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    });
+  },
+};
+
+/**
  * Export all APIs
  */
 export const api = {
   auth: authApi,
+  users: usersApi,
   products: productsApi,
   clients: clientsApi,
   orders: ordersApi,

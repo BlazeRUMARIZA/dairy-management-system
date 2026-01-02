@@ -118,10 +118,12 @@ import orderRoutes from './routes/orderRoutes';
 import batchRoutes from './routes/batchRoutes';
 import invoiceRoutes from './routes/invoiceRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import userRoutes from './routes/userRoutes';
 
 // Mount routes
 const apiVersion = process.env.API_VERSION || 'v1';
 app.use(`/api/${apiVersion}/auth`, authRoutes);
+app.use(`/api/${apiVersion}/users`, userRoutes);
 app.use(`/api/${apiVersion}/products`, productRoutes);
 app.use(`/api/${apiVersion}/clients`, clientRoutes);
 app.use(`/api/${apiVersion}/orders`, orderRoutes);
