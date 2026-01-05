@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including devDependencies for building)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -19,29 +19,24 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine
 
-# Install MySQL client for database initialization
-RUN apk add --no-cache mysql-client bash
-
 WORKDIR /app
 
-# Copy package files and install production dependencies
+# Copy package files and install ONLY production dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/database ./database
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+# Copy database schema if needed
+COPY --from=builder /app/database ./database 2>/dev/null || true
 
-# Expose port
-EXPOSE 5000
+# Expose port (Railway uses PORT env variable)
+EXPOSE ${PORT:-5000}
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "const http = require('http'); http.get('http://localhost:' + (process.env.PORT || 5000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Use entrypoint script for automatic DB initialization
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Start the server
+CMD ["node", "dist/server.js"]
