@@ -18,8 +18,8 @@ COPY tsconfig.node.json ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
-# Build the frontend with Vite
-RUN npx vite build
+# Build the frontend with locally installed Vite
+RUN npm run build
 
 # Stage 2: Build Backend
 FROM node:18-alpine AS server-builder
