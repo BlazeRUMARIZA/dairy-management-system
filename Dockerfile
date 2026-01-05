@@ -51,8 +51,8 @@ COPY --from=server-builder /app/backend/dist ./dist
 # Copy built frontend files to serve as static
 COPY --from=client-builder /app/client/dist ./public
 
-# Copy database schema if needed
-COPY backend/database ./database 2>/dev/null || true
+# Copy database schema if exists
+COPY backend/database ./database
 
 # Expose port (Railway uses PORT env variable)
 EXPOSE ${PORT:-5000}
