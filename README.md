@@ -1,319 +1,254 @@
 # Dairy Management System
 
-A comprehensive, modern full-stack web application for managing dairy business operations including production tracking, inventory management, order processing, client relations, invoicing, and analytics.
+A full-stack web application for managing dairy farms, built with Node.js, React, and MySQL.
 
-![React](https://img.shields.io/badge/React-18.2.0-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue) ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.3.6-cyan) ![Node.js](https://img.shields.io/badge/Node.js-18+-green) ![Express](https://img.shields.io/badge/Express-4.18-lightgrey) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)
+## Features
 
-## 📦 Project Structure
+- 🐮 **Cow Management**: Track all cows with detailed information (tag number, breed, status, etc.)
+- 🥛 **Milk Production**: Record and monitor daily milk production with morning, afternoon, and evening sessions
+- 🏥 **Health Records**: Maintain comprehensive health records including diagnoses, treatments, and veterinary information
+- 🌾 **Feed Management**: Track feed consumption, costs, and suppliers
+- 📊 **Dashboard**: Real-time statistics and trends for milk production, cow health, and feed costs
+- 🔐 **Authentication**: Secure login system with role-based access (admin, manager, staff)
 
-This project consists of two main parts:
+## Tech Stack
 
-- **Frontend** - React + TypeScript + Vite + Tailwind CSS (in root directory)
-- **Backend** - Node.js + Express + MySQL + Sequelize + TypeScript (in `backend/` directory)
+### Backend
+- Node.js
+- Express.js
+- MySQL
+- JWT Authentication
+- bcryptjs for password hashing
 
-Both are fully integrated and production-ready!
+### Frontend
+- React.js
+- React Router
+- Axios for API calls
+- Modern CSS with responsive design
 
-## 🚀 Quick Start
+## Prerequisites
 
-### **[📘 Guide de Démarrage Rapide (Français)](DEMARRAGE_RAPIDE.md)**
-Pour démarrer rapidement avec XAMPP, suivez le guide complet en français!
+- Node.js (v14 or higher)
+- MySQL (v5.7 or higher)
+- npm or yarn
 
-### Prérequis
-- Node.js 18+
-- XAMPP (pour MySQL)
-- npm ou yarn
+## Installation
 
-### Installation Rapide
+### 1. Clone the repository
+
 ```bash
-# 1. Installer les dépendances backend
-cd backend
-npm install
-
-# 2. Démarrer XAMPP MySQL (via Control Panel)
-
-# 3. Créer la base de données via phpMyAdmin
-# http://localhost/phpmyadmin → Créer base "dairy_management"
-
-# 4. Configurer l'environnement
-cp .env.example .env
-
-# 5. Initialiser la base de données
-npm run db:init
-npm run db:seed
-
-# 6. Démarrer le backend
-npm run dev
-
-# 7. Dans un nouveau terminal, démarrer le frontend
-cd ..
-npm install
-npm run dev
-```
-
-🎉 **Application disponible sur http://localhost:5173**  
-🔑 **Connexion:** admin@dairy.com / password123
-
----
-
-## 🌟 Features
-
-### 🔐 Authentication & Security
-- Secure login system
-- Password recovery (3-step process)
-- Employee account management
-- Role-based access control
-
-### 📊 Dashboard
-- Real-time production metrics
-- Pending orders overview
-- Critical stock alerts
-- Monthly revenue tracking
-- Interactive charts and visualizations
-- Today's tasks management
-- Weekly production trends
-- Top 5 clients analytics
-
-### 🥛 Production Module
-- Real-time production line monitoring
-- Batch entry and tracking
-- Quality control management
-- Recipe formulation system
-- Production yield tracking
-- Operator assignment
-
-### 📦 Stock & Inventory
-- Global stock overview
-- Product detail tracking
-- Expiration date management
-- Multi-location storage tracking
-- Low stock alerts
-- Physical inventory interface
-- Barcode/QR code support
-
-### 🚚 Orders & Deliveries
-- Order calendar view
-- Multi-step order creation
-- Delivery tracking
-- Driver/courier management
-- Route optimization
-- Electronic signature capture
-- Real-time status updates
-
-### 👥 Client Management
-- Client directory
-- Detailed client profiles
-- Order history tracking
-- Payment management
-- Client segmentation
-- Loyalty program
-- Satisfaction ratings
-
-### 💰 Invoicing & Finance
-- Professional invoice generation
-- Automated payment reminders
-- Cash flow monitoring
-- Accounts receivable tracking
-- Financial dashboards
-- Multi-format exports (PDF, Excel, CSV)
-
-### 📈 Reports & Analytics
-- Commercial performance metrics
-- Production efficiency reports
-- Logistics performance tracking
-- Customizable date ranges
-- Exportable reports
-- Visual data representations
-
-### ⚙️ Administration
-- User management
-- Product configuration
-- System settings
-- Permission management
-- Email template configuration
-- Delivery zone setup
-
-## 🎨 Design System
-
-### Themes
-- **Light Theme** (Primary) - Clean and professional
-- **Dark Theme** - Easy on the eyes
-- **Fresh Theme** - Blue/green tones for a dairy-fresh feel
-
-### Color Palette
-```css
-Primary (Dairy Blue): #4A90E2
-Fresh Green: #50C878
-Cream White: #F8F8F8
-Success: #28A745
-Warning: #FFC107
-Danger: #DC3545
-Info: #17A2B8
-```
-
-### Typography
-- Font Family: Inter
-- Headings: 16-24px, 600 weight
-- Body: 14-16px, 400 weight
-
-### Components
-- Cards with hover effects
-- Responsive tables
-- Form inputs with validation states
-- Modals (3 sizes)
-- Badges and status indicators
-- Loading skeletons
-- Empty states
-
-## 🚀 Tech Stack
-
-- **Frontend Framework:** React 18.2.0
-- **Language:** TypeScript 5.3.3
-- **Build Tool:** Vite 4.5.0
-- **Styling:** Tailwind CSS 3.3.6
-- **Routing:** React Router DOM 6.20.0
-- **Charts:** Recharts 2.10.3
-- **Icons:** Lucide React 0.294.0
-- **Date Utilities:** date-fns 2.30.0
-
-## 📋 Prerequisites
-
-- Node.js 18.x or higher
-- npm 9.x or higher
-
-## 🛠️ Installation
-
-1. Clone the repository:
-```bash
+git clone <repository-url>
 cd dairy-management-system
 ```
 
-2. Install dependencies:
+### 2. Install dependencies
+
 ```bash
+# Install root dependencies
+npm install
+
+# Install server dependencies
+cd server
+npm install
+
+# Install client dependencies
+cd ../client
 npm install
 ```
 
-3. Start the development server:
+### 3. Database Setup
+
+1. Create a MySQL database:
+```sql
+CREATE DATABASE dairy_management;
+```
+
+2. Configure database connection:
+```bash
+cd server
+cp .env.example .env
+```
+
+3. Edit `.env` file with your database credentials:
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=dairy_management
+DB_PORT=3306
+JWT_SECRET=your_super_secret_jwt_key_change_in_production
+```
+
+### 4. Start the application
+
+#### Development Mode (with hot reload)
+
+From the root directory:
 ```bash
 npm run dev
 ```
 
-4. Open your browser and navigate to:
-```
-http://localhost:3000
-```
+This will start both the backend server (port 5000) and frontend (port 3000).
 
-## 🏗️ Build for Production
+#### Or start separately:
 
+**Backend:**
 ```bash
+cd server
+npm run dev
+```
+
+**Frontend:**
+```bash
+cd client
+npm start
+```
+
+## Default Login Credentials
+
+- **Username:** admin
+- **Password:** admin123
+
+⚠️ **Important:** Change the default password after first login in production!
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+
+### Cows
+- `GET /api/cows` - Get all cows (with optional filters: status, search)
+- `GET /api/cows/:id` - Get single cow
+- `POST /api/cows` - Create new cow
+- `PUT /api/cows/:id` - Update cow
+- `DELETE /api/cows/:id` - Delete cow
+
+### Milk Production
+- `GET /api/milk` - Get all milk records (with optional filters: startDate, endDate, cow_id)
+- `GET /api/milk/:id` - Get single record
+- `POST /api/milk` - Create new record
+- `PUT /api/milk/:id` - Update record
+- `DELETE /api/milk/:id` - Delete record
+- `GET /api/milk/stats/summary` - Get milk statistics
+
+### Health Records
+- `GET /api/health` - Get all health records
+- `GET /api/health/:id` - Get single record
+- `POST /api/health` - Create new record
+- `PUT /api/health/:id` - Update record
+- `DELETE /api/health/:id` - Delete record
+
+### Feed Records
+- `GET /api/feed` - Get all feed records
+- `GET /api/feed/:id` - Get single record
+- `POST /api/feed` - Create new record
+- `PUT /api/feed/:id` - Update record
+- `DELETE /api/feed/:id` - Delete record
+- `GET /api/feed/stats/summary` - Get feed statistics
+
+### Dashboard
+- `GET /api/dashboard/stats` - Get dashboard statistics
+
+## Deployment
+
+### Using Docker
+
+1. Build and run with Docker Compose:
+```bash
+docker-compose up -d
+```
+
+2. The application will be available at:
+   - Frontend: http://localhost:3000
+   - Backend: http://localhost:5000
+
+### Manual Deployment
+
+1. **Build the React app:**
+```bash
+cd client
 npm run build
 ```
 
-The production-ready files will be in the `dist` directory.
+2. **Set production environment variables:**
+```bash
+cd server
+# Edit .env file with production values
+NODE_ENV=production
+```
 
-## 📱 Responsive Design
+3. **Start the server:**
+```bash
+cd server
+npm start
+```
 
-- **Desktop:** Optimized for screens > 1024px
-- **Tablet:** Responsive layout for 768px - 1024px
-- **Mobile:** Simplified version for < 768px (future enhancement)
+4. **Serve the React build:**
+   - Option 1: Use a web server (nginx, Apache) to serve the `client/build` directory
+   - Option 2: Configure Express to serve static files from `client/build`
 
-## 🔑 Demo Credentials
-
-For demonstration purposes, you can log in with any email/password combination.
-
-**Example:**
-- Email: admin@dairy.com
-- Password: any password
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 dairy-management-system/
-├── src/
-│   ├── components/
-│   │   ├── Auth/
-│   │   ├── Layout/
-│   │   └── UI/
-│   ├── contexts/
-│   │   ├── AuthContext.tsx
-│   │   └── ThemeContext.tsx
-│   ├── pages/
-│   │   ├── Auth/
-│   │   ├── Dashboard/
-│   │   ├── Production/
-│   │   ├── Inventory/
-│   │   ├── Orders/
-│   │   ├── Clients/
-│   │   ├── Invoicing/
-│   │   ├── Reports/
-│   │   └── Settings/
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css
-├── public/
-├── index.html
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-└── vite.config.ts
+├── server/
+│   ├── config/
+│   │   └── database.js       # Database configuration and initialization
+│   ├── middleware/
+│   │   └── auth.js            # JWT authentication middleware
+│   ├── routes/
+│   │   ├── auth.js            # Authentication routes
+│   │   ├── cows.js            # Cow management routes
+│   │   ├── milk.js            # Milk production routes
+│   │   ├── health.js          # Health records routes
+│   │   ├── feed.js            # Feed records routes
+│   │   └── dashboard.js       # Dashboard routes
+│   ├── index.js               # Server entry point
+│   ├── package.json
+│   └── .env.example
+├── client/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/        # Reusable components
+│   │   ├── pages/             # Page components
+│   │   ├── utils/             # Utilities (API, Auth context)
+│   │   ├── App.js
+│   │   └── index.js
+│   └── package.json
+├── docker-compose.yml
+├── Dockerfile
+└── README.md
 ```
 
-## 🎯 Key Features Implementation
+## Database Schema
 
-### Dairy-Specific Capabilities
-- ✅ **Traceability:** Complete batch tracking from production to delivery
-- ✅ **Expiration Management:** Proactive alerts for products nearing expiration
-- ✅ **Temperature Tracking:** Monitor storage and transport conditions
-- ✅ **Regulatory Compliance:** HACCP and traceability standards
+The application automatically creates the following tables on first run:
+- `users` - User accounts and authentication
+- `cows` - Cow information
+- `milk_production` - Daily milk production records
+- `health_records` - Health and veterinary records
+- `feed_records` - Feed consumption and costs
 
-### Production Features
-- Multi-line production monitoring
-- Real-time capacity tracking
-- Yield percentage calculation
-- Quality control checkpoints
-- Batch number generation
+## Security Notes
 
-### Inventory Features
-- Multi-location management
-- Automatic reorder alerts
-- FIFO/FEFO rotation tracking
-- Barcode scanning support
+- Change the default JWT_SECRET in production
+- Use strong passwords for database access
+- Enable HTTPS in production
+- Regularly update dependencies
+- Implement rate limiting for production use
 
-### Order Processing
-- Drag-and-drop calendar
-- Available stock validation
-- Automatic pricing
-- Delivery route optimization
-- Electronic proof of delivery
+## Contributing
 
-## 🌐 Browser Support
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+## License
 
-## 🤝 Contributing
+MIT License
 
-This is a demo project. Feel free to fork and customize for your needs.
+## Support
 
-## 📄 License
-
-MIT License - feel free to use this project for your dairy business!
-
-## 🆘 Support
-
-For issues and questions, please check the in-app Support section or refer to the documentation.
-
-## 🔄 Future Enhancements
-
-- Mobile app version
-- Real-time notifications
-- Advanced analytics with AI
-- Integration with accounting software
-- Multi-language support
-- API for third-party integrations
-- Progressive Web App (PWA) capabilities
-
----
-
-**Built with ❤️ for modern dairy businesses**
+For issues and questions, please open an issue on the repository.
