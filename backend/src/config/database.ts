@@ -7,13 +7,14 @@ import Order from '../models/Order';
 import Batch from '../models/Batch';
 import Invoice from '../models/Invoice';
 
+// Support Railway's auto-injected MySQL variables (MYSQL*) and custom variables (DB_*)
 const sequelize = new Sequelize({
-  database: process.env.DB_DATABASE || process.env.DB_NAME || 'dairy_management',
+  database: process.env.MYSQLDATABASE || process.env.DB_DATABASE || process.env.DB_NAME || 'dairy_management',
   dialect: 'mysql',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  username: process.env.DB_USERNAME || process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
+  username: process.env.MYSQLUSER || process.env.DB_USERNAME || process.env.DB_USER || 'root',
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
     max: 5,
@@ -58,10 +59,10 @@ const connectDB = async (): Promise<void> => {
     console.error('❌ Error connecting to MySQL:', error.message);
     console.log('⚠️  Server will continue running without database');
     console.log('⚠️  Please check your database configuration:');
-    console.log(`    DB_HOST: ${process.env.DB_HOST || 'not set'}`);
-    console.log(`    DB_PORT: ${process.env.DB_PORT || 'not set'}`);
-    console.log(`    DB_USERNAME: ${process.env.DB_USERNAME || process.env.DB_USER || 'not set'}`);
-    console.log(`    DB_DATABASE: ${process.env.DB_DATABASE || process.env.DB_NAME || 'not set'}`);
+    console.log(`    MYSQLHOST/DB_HOST: ${process.env.MYSQLHOST || process.env.DB_HOST || 'not set'}`);
+    console.log(`    MYSQLPORT/DB_PORT: ${process.env.MYSQLPORT || process.env.DB_PORT || 'not set'}`);
+    console.log(`    MYSQLUSER/DB_USERNAME: ${process.env.MYSQLUSER || process.env.DB_USERNAME || process.env.DB_USER || 'not set'}`);
+    console.log(`    MYSQLDATABASE/DB_DATABASE: ${process.env.MYSQLDATABASE || process.env.DB_DATABASE || process.env.DB_NAME || 'not set'}`);
     // Don't exit - let server continue running
   }
 };

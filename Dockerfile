@@ -1,32 +1,65 @@
 # Multi-stage build for production
+# Structure: / (frontend React/Vite) and /backend (Express/TypeScript)
 
-# Stage 1: Build React app
+# Stage 1: Build React/Vite frontend
 FROM node:18-alpine AS client-builder
 WORKDIR /app/client
-COPY client/package*.json ./
+
+# Copy frontend package files (from root)
+COPY package*.json ./
 RUN npm install
-COPY client/ ./
+
+# Copy frontend source files
+COPY src/ ./src/
+COPY public/ ./public/ 2>/dev/null || true
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig.json ./
+COPY tsconfig.node.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+
+# Build the frontend
 RUN npm run build
 
-# Stage 2: Backend server
+# Stage 2: Build Backend
+FROM node:18-alpine AS server-builder
+WORKDIR /app/backend
+
+# Copy backend package files
+COPY backend/package*.json ./
+RUN npm install
+
+# Copy backend source files
+COPY backend/src/ ./src/
+COPY backend/tsconfig.json ./
+
+# Build TypeScript
+RUN npm run build
+
+# Stage 3: Production server
 FROM node:18-alpine
 WORKDIR /app
 
-# Copy server files
-COPY server/package*.json ./
+# Copy backend package files and install production dependencies only
+COPY backend/package*.json ./
 RUN npm install --production
 
-COPY server/ ./
+# Copy built backend files
+COPY --from=server-builder /app/backend/dist ./dist
 
-# Copy built React app
-COPY --from=client-builder /app/client/build ./public
+# Copy built frontend files to serve as static
+COPY --from=client-builder /app/client/dist ./public
 
-# Install serve to serve static files
-RUN npm install -g serve
+# Copy database schema if needed
+COPY backend/database ./database 2>/dev/null || true
 
-# Expose port
-EXPOSE 5000
+# Expose port (Railway uses PORT env variable)
+EXPOSE ${PORT:-5000}
 
-# Start server
-CMD ["node", "index.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "const http = require('http'); http.get('http://localhost:' + (process.env.PORT || 5000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
+# Start the server
+CMD ["node", "dist/server.js"]
