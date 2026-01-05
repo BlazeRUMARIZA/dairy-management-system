@@ -25,13 +25,15 @@ RUN npm run build
 FROM node:18-alpine AS server-builder
 WORKDIR /app/backend
 
-# Copy backend package files
+# Copy backend configuration and package files
 COPY backend/package*.json ./
-RUN npm install
+COPY backend/tsconfig.json ./
+
+# Install dependencies without running postinstall
+RUN npm install --ignore-scripts
 
 # Copy backend source files
 COPY backend/src/ ./src/
-COPY backend/tsconfig.json ./
 
 # Build TypeScript
 RUN npm run build
