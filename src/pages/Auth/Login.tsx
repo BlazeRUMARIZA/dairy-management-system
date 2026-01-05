@@ -93,7 +93,7 @@ const Login: React.FC = () => {
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Test with: admin@dairy.com / admin123</p>
+          <p>Test with: blaze.admin@dairy.com / admin123</p>
         </div>
       </div>
     </div>
